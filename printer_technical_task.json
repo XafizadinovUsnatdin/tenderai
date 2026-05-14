@@ -1,0 +1,128 @@
+{
+  "query": "Принтер",
+  "source": "xarid.uzex.uz",
+  "price_analysis": {
+    "count": 32,
+    "min_price": 1810000.0,
+    "max_price": 11745000.0,
+    "avg_price": 3398333.25,
+    "median_price": 2895000.0,
+    "recommended_min_price": 2605500.0,
+    "recommended_max_price": 3184500.01,
+    "suspicious_prices": [
+      {
+        "lot_display_no": "261110085189811",
+        "product_name": "Принтер",
+        "unit_price": 1818000.0,
+        "avg_price": 3398333.25,
+        "reason": "Bitta dona narxi o‘rtacha narxdan 30% yoki undan ko‘proq past"
+      },
+      {
+        "lot_display_no": "261110085189762",
+        "product_name": "Принтер",
+        "unit_price": 2212000.01,
+        "avg_price": 3398333.25,
+        "reason": "Bitta dona narxi o‘rtacha narxdan 30% yoki undan ko‘proq past"
+      },
+      {
+        "lot_display_no": "261110085189759",
+        "product_name": "Принтер",
+        "unit_price": 2212000.01,
+        "avg_price": 3398333.25,
+        "reason": "Bitta dona narxi o‘rtacha narxdan 30% yoki undan ko‘proq past"
+      },
+      {
+        "lot_display_no": "261110085189433",
+        "product_name": "Принтер",
+        "unit_price": 1810000.0,
+        "avg_price": 3398333.25,
+        "reason": "Bitta dona narxi o‘rtacha narxdan 30% yoki undan ko‘proq past"
+      },
+      {
+        "lot_display_no": "261110085183881",
+        "product_name": "Принтер",
+        "unit_price": 1890000.0,
+        "avg_price": 3398333.25,
+        "reason": "Bitta dona narxi o‘rtacha narxdan 30% yoki undan ko‘proq past"
+      },
+      {
+        "lot_display_no": "261110085188643",
+        "product_name": "Принтер",
+        "unit_price": 2337000.0,
+        "avg_price": 3398333.25,
+        "reason": "Bitta dona narxi o‘rtacha narxdan 30% yoki undan ko‘proq past"
+      },
+      {
+        "lot_display_no": "261110085188263",
+        "product_name": "Принтер",
+        "unit_price": 2195000.0,
+        "avg_price": 3398333.25,
+        "reason": "Bitta dona narxi o‘rtacha narxdan 30% yoki undan ko‘proq past"
+      },
+      {
+        "lot_display_no": "261110085181870",
+        "product_name": "Принтер",
+        "unit_price": 2323000.0,
+        "avg_price": 3398333.25,
+        "reason": "Bitta dona narxi o‘rtacha narxdan 30% yoki undan ko‘proq past"
+      },
+      {
+        "lot_display_no": "261110085187485",
+        "product_name": "Принтер",
+        "unit_price": 1840000.0,
+        "avg_price": 3398333.25,
+        "reason": "Bitta dona narxi o‘rtacha narxdan 30% yoki undan ko‘proq past"
+      },
+      {
+        "lot_display_no": "261110085187496",
+        "product_name": "Принтер",
+        "unit_price": 2329999.0,
+        "avg_price": 3398333.25,
+        "reason": "Bitta dona narxi o‘rtacha narxdan 30% yoki undan ko‘proq past"
+      }
+    ]
+  },
+  "technical_task": {
+    "title": "Printer xaridi uchun texnik topshiriq",
+    "product_understanding": "Printerlar ofis va uyda hujjatlarni chop etish, skanerlash va nusxa olish uchun ishlatiladigan qurilmalardir.",
+    "previous_tender_insights": "O'tgan tenderlarda 35 ta taklif berilgan, ulardan 32 tasi muvaffaqiyatli yakunlangan.",
+    "recommended_specification": {
+      "Xarid predmeti": "Printer",
+      "Umumiy talablar": "Printerlar yuqori sifatli chop etish, skanerlash va nusxa olish imkoniyatlariga ega bo'lishi kerak.",
+      "Texnik talablar": [
+        "Chop etish tezligi: 10-33 sahifa/daqiqa",
+        "Maksimal format: A4",
+        "Maksimal rezolyutsiya: 1200x1200 dpi yoki yuqori",
+        "Wi-Fi va USB interfeyslari",
+        "Skanerlash va nusxa olish funksiyalari"
+      ],
+      "Kafolat talabi": "Kafolat muddati kamida 1 yil bo'lishi kerak.",
+      "Yetkazib berish va qabul qilish talabi": "Yetkazib berish 30 kun ichida amalga oshirilishi kerak.",
+      "Raqobatni cheklamaslik eslatmasi": "Texnik talablar raqobatni cheklamasligi uchun keng qamrovli va aniq bo'lishi lozim."
+    },
+    "econom_variant": {
+      "minimal": "Chop etish tezligi 10 sahifa/daqiqa, maksimal rezolyutsiya 600x600 dpi, Wi-Fi interfeysi, oddiy ofis ishlari uchun mos."
+    },
+    "standard_variant": {
+      "optimal": "Chop etish tezligi 20 sahifa/daqiqa, maksimal rezolyutsiya 1200x1200 dpi, Wi-Fi va USB interfeyslari, ofis uchun optimal parametrlar."
+    },
+    "premium_variant": {
+      "yuqori yuklama": "Chop etish tezligi 33 sahifa/daqiqa, maksimal rezolyutsiya 4800x2400 dpi, rangli va A3 formatda chop etish, kengaytirilgan funksiyalar."
+    },
+    "price_summary": {
+      "min_price": 1810000.0,
+      "max_price": 11745000.0,
+      "avg_price": 3398333.25,
+      "recommended_min_price": 2605500.0,
+      "recommended_max_price": 3184500.01
+    },
+    "risk_warnings": [
+      "Ba'zi takliflar o'rtacha narxdan 30% yoki undan ko'proq past bo'lganligi sababli shubhali hisoblanadi.",
+      "Tenderda qatnashgan takliflar orasida narxlar juda keng tarqalgan."
+    ],
+    "source_based_notes": [
+      "O'tgan tenderlarda ko'p uchragan parametrlar asosida tavsiya etilgan.",
+      "Narxlar tahlili o'tkazilgan va shubhali narxlar aniqlangan."
+    ]
+  }
+}

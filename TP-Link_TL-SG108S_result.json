@@ -1,0 +1,272 @@
+{
+  "query": "TP-Link TL-SG108S",
+  "source": "xarid.uzex.uz",
+  "keywords": [
+    "коммутатор",
+    "сетевой коммутатор",
+    "kommutator",
+    "tarmoq kommutatori"
+  ],
+  "search_plan": {
+    "original_query": "TP-Link TL-SG108S",
+    "detected_item_type": "коммутатор",
+    "brand": "TP-Link",
+    "model": "TL-SG108S",
+    "is_service": false,
+    "search_keywords_ru": [
+      "коммутатор",
+      "сетевой коммутатор"
+    ],
+    "search_keywords_uz": [
+      "kommutator",
+      "tarmoq kommutatori"
+    ],
+    "category_hints_ru": [
+      "сетевая техника",
+      "коммутация"
+    ],
+    "exclude_keywords_ru": [
+      "TP-Link",
+      "TL-SG108S"
+    ],
+    "notes": "Определен тип продукта как коммутатор."
+  },
+  "selected_product": {
+    "name": "Коммутатор",
+    "product_code": "26.30.11.120-00012",
+    "category_id": 119460,
+    "category_name": "Оборудование компьютерное, электронное и оптическое"
+  },
+  "price_analysis": {
+    "count": 35,
+    "min_price": 190000.0,
+    "max_price": 11210000.0,
+    "avg_price": 2050183.09,
+    "median_price": 875000.0,
+    "recommended_min_price": 787500.0,
+    "recommended_max_price": 962500.0,
+    "suspicious_prices": [
+      {
+        "lot_display_no": "261110085182390",
+        "product_name": "Коммутатор",
+        "unit_price": 1149000.0,
+        "avg_price": 2050183.09,
+        "reason": "Bitta dona narxi o‘rtacha narxdan 30% yoki undan ko‘proq past"
+      },
+      {
+        "lot_display_no": "261110085178144",
+        "product_name": "Коммутатор",
+        "unit_price": 303000.0,
+        "avg_price": 2050183.09,
+        "reason": "Bitta dona narxi o‘rtacha narxdan 30% yoki undan ko‘proq past"
+      },
+      {
+        "lot_display_no": "261110085177874",
+        "product_name": "Коммутатор",
+        "unit_price": 875000.0,
+        "avg_price": 2050183.09,
+        "reason": "Bitta dona narxi o‘rtacha narxdan 30% yoki undan ko‘proq past"
+      },
+      {
+        "lot_display_no": "261110085176740",
+        "product_name": "Коммутатор",
+        "unit_price": 960000.01,
+        "avg_price": 2050183.09,
+        "reason": "Bitta dona narxi o‘rtacha narxdan 30% yoki undan ko‘proq past"
+      },
+      {
+        "lot_display_no": "261110085175556",
+        "product_name": "Коммутатор",
+        "unit_price": 860000.0,
+        "avg_price": 2050183.09,
+        "reason": "Bitta dona narxi o‘rtacha narxdan 30% yoki undan ko‘proq past"
+      },
+      {
+        "lot_display_no": "261110085173543",
+        "product_name": "Коммутатор",
+        "unit_price": 345000.0,
+        "avg_price": 2050183.09,
+        "reason": "Bitta dona narxi o‘rtacha narxdan 30% yoki undan ko‘proq past"
+      },
+      {
+        "lot_display_no": "261110085171714",
+        "product_name": "Коммутатор",
+        "unit_price": 545000.0,
+        "avg_price": 2050183.09,
+        "reason": "Bitta dona narxi o‘rtacha narxdan 30% yoki undan ko‘proq past"
+      },
+      {
+        "lot_display_no": "261210085167260",
+        "product_name": "Коммутатор",
+        "unit_price": 399000.0,
+        "avg_price": 2050183.09,
+        "reason": "Bitta dona narxi o‘rtacha narxdan 30% yoki undan ko‘proq past"
+      },
+      {
+        "lot_display_no": "261110085164309",
+        "product_name": "Коммутатор",
+        "unit_price": 449000.0,
+        "avg_price": 2050183.09,
+        "reason": "Bitta dona narxi o‘rtacha narxdan 30% yoki undan ko‘proq past"
+      },
+      {
+        "lot_display_no": "261110085164295",
+        "product_name": "Коммутатор",
+        "unit_price": 289999.0,
+        "avg_price": 2050183.09,
+        "reason": "Bitta dona narxi o‘rtacha narxdan 30% yoki undan ko‘proq past"
+      },
+      {
+        "lot_display_no": "261110085161567",
+        "product_name": "Коммутатор",
+        "unit_price": 480000.0,
+        "avg_price": 2050183.09,
+        "reason": "Bitta dona narxi o‘rtacha narxdan 30% yoki undan ko‘proq past"
+      },
+      {
+        "lot_display_no": "261110085160998",
+        "product_name": "Коммутатор",
+        "unit_price": 295000.0,
+        "avg_price": 2050183.09,
+        "reason": "Bitta dona narxi o‘rtacha narxdan 30% yoki undan ko‘proq past"
+      },
+      {
+        "lot_display_no": "261110085159347",
+        "product_name": "Коммутатор",
+        "unit_price": 580000.0,
+        "avg_price": 2050183.09,
+        "reason": "Bitta dona narxi o‘rtacha narxdan 30% yoki undan ko‘proq past"
+      },
+      {
+        "lot_display_no": "261110085157134",
+        "product_name": "Коммутатор",
+        "unit_price": 190000.0,
+        "avg_price": 2050183.09,
+        "reason": "Bitta dona narxi o‘rtacha narxdan 30% yoki undan ko‘proq past"
+      },
+      {
+        "lot_display_no": "261110085157136",
+        "product_name": "Коммутатор",
+        "unit_price": 485000.0,
+        "avg_price": 2050183.09,
+        "reason": "Bitta dona narxi o‘rtacha narxdan 30% yoki undan ko‘proq past"
+      },
+      {
+        "lot_display_no": "261110085143437",
+        "product_name": "Коммутатор",
+        "unit_price": 299000.0,
+        "avg_price": 2050183.09,
+        "reason": "Bitta dona narxi o‘rtacha narxdan 30% yoki undan ko‘proq past"
+      },
+      {
+        "lot_display_no": "261110085140808",
+        "product_name": "Коммутатор",
+        "unit_price": 735000.0,
+        "avg_price": 2050183.09,
+        "reason": "Bitta dona narxi o‘rtacha narxdan 30% yoki undan ko‘proq past"
+      },
+      {
+        "lot_display_no": "261210085142119",
+        "product_name": "Коммутатор",
+        "unit_price": 930000.0,
+        "avg_price": 2050183.09,
+        "reason": "Bitta dona narxi o‘rtacha narxdan 30% yoki undan ko‘proq past"
+      },
+      {
+        "lot_display_no": "261110085139710",
+        "product_name": "Коммутатор",
+        "unit_price": 424000.0,
+        "avg_price": 2050183.09,
+        "reason": "Bitta dona narxi o‘rtacha narxdan 30% yoki undan ko‘proq past"
+      },
+      {
+        "lot_display_no": "261110085139595",
+        "product_name": "Коммутатор",
+        "unit_price": 465000.0,
+        "avg_price": 2050183.09,
+        "reason": "Bitta dona narxi o‘rtacha narxdan 30% yoki undan ko‘proq past"
+      },
+      {
+        "lot_display_no": "261110085138286",
+        "product_name": "Коммутатор",
+        "unit_price": 759525.0,
+        "avg_price": 2050183.09,
+        "reason": "Bitta dona narxi o‘rtacha narxdan 30% yoki undan ko‘proq past"
+      },
+      {
+        "lot_display_no": "261110085138295",
+        "product_name": "Коммутатор",
+        "unit_price": 1297035.0,
+        "avg_price": 2050183.09,
+        "reason": "Bitta dona narxi o‘rtacha narxdan 30% yoki undan ko‘proq past"
+      },
+      {
+        "lot_display_no": "261110085137947",
+        "product_name": "Коммутатор",
+        "unit_price": 941100.0,
+        "avg_price": 2050183.09,
+        "reason": "Bitta dona narxi o‘rtacha narxdan 30% yoki undan ko‘proq past"
+      }
+    ]
+  },
+  "technical_task": {
+    "title": "TP-Link TL-SG108S uchun texnik topshiriq",
+    "product_understanding": "TP-Link TL-SG108S - bu 8-portli gigabit Ethernet kommutatori bo'lib, tarmoqni boshqarish va kengaytirish uchun mo'ljallangan.",
+    "previous_tender_insights": "O'tgan tenderlarda 35 ta kommutator sotilgan, ularning narxlari 190000 so'mdan 11210000 so'mgacha bo'lgan.",
+    "recommended_specification": {
+      "Xarid predmeti": "Gigabit Ethernet kommutatori",
+      "Umumiy talablar": "Ishonchli va yuqori sifatli tarmoq aloqasi ta'minlash.",
+      "Texnik talablar": [
+        "8 ta RJ45 porti, 10/100/1000 Mbit/s tezlikda",
+        "PoE (Power over Ethernet) qo'llab-quvvatlanishi"
+      ],
+      "Kafolat talabi": "manbalarda kafolat muddati aniq ko‘rsatilmagan",
+      "Yetkazib berish va qabul qilish talabi": "manbalarda ko‘rsatilmagan",
+      "Raqobatni cheklamaslik eslatmasi": "Texnik topshiriq adolatli va raqobatni cheklamaydigan bo'lishi kerak."
+    },
+    "econom_variant": {
+      "description": "Iqtisodiy variant, oddiy funktsiyalar bilan.",
+      "technical_parameters": [
+        "8 ta RJ45 porti",
+        "10/100 Mbit/s tezlik"
+      ]
+    },
+    "standard_variant": {
+      "description": "Standart variant, PoE qo'llab-quvvatlaydi.",
+      "technical_parameters": [
+        "8 ta RJ45 porti",
+        "10/100/1000 Mbit/s tezlik",
+        "PoE qo'llab-quvvatlash"
+      ]
+    },
+    "premium_variant": {
+      "description": "Premium variant, kengaytirilgan funktsiyalar va yuqori ishonchlilik.",
+      "technical_parameters": [
+        "8 ta RJ45 porti",
+        "10/100/1000 Mbit/s tezlik",
+        "Qo'shimcha xavfsizlik funksiyalari"
+      ]
+    },
+    "price_summary": {
+      "text": "O'tgan tenderlarda kommutatorlar narxi 190000 so'mdan 11210000 so'mgacha bo'lgan.",
+      "min_price": 190000.0,
+      "max_price": 11210000.0,
+      "avg_price": 2050183.09,
+      "median_price": 875000.0,
+      "recommended_min_price": 787500.0,
+      "recommended_max_price": 962500.0
+    },
+    "risk_warnings": [
+      "Ba'zi narxlar o'rtacha narxdan 30% yoki undan ko'proq past.",
+      "Narxlar o'zgarishi mumkin."
+    ],
+    "source_based_notes": [
+      "O'tgan tenderlarda 35 ta kommutator sotilgan.",
+      "Kommutatorlar turli xil shartlar bilan taklif qilingan."
+    ]
+  },
+  "validation_warnings": [
+    "LLM aniq modelga bog‘lab qo‘ygan bo‘lishi mumkin: TL-SG108S. Texnik topshiriq modelga emas, parametrga asoslanishi kerak.",
+    "LLM aniq modelga bog‘lab qo‘ygan bo‘lishi mumkin: RJ45. Texnik topshiriq modelga emas, parametrga asoslanishi kerak."
+  ]
+}
