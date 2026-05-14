@@ -111,7 +111,14 @@ class GenericOutputValidator:
     ) -> list[str]:
         warnings = []
 
-        expected = source_data.get("price_analysis") or {}
+        expected_wrapper = source_data.get("price_analysis") or {}
+        expected = (
+            expected_wrapper.get("global")
+            if isinstance(expected_wrapper, dict)
+            else None
+        )
+        if not isinstance(expected, dict):
+            expected = expected_wrapper if isinstance(expected_wrapper, dict) else {}
         actual = llm_result.get("price_summary") or {}
 
         if not isinstance(actual, dict):
@@ -194,9 +201,24 @@ class GenericOutputValidator:
             found.extend(re.findall(pattern, text))
 
         blacklist = {
+            "RJ45",
             "USB",
+            "WI-FI",
             "WIFI",
+            "ETHERNET",
+            "POE",
+            "SFP",
+            "LAN",
+            "WAN",
             "DPI",
+            "GB",
+            "TB",
+            "SSD",
+            "HDD",
+            "RAM",
+            "CPU",
+            "HDMI",
+            "VGA",
             "A4",
             "A3",
             "OS",

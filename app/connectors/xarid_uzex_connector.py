@@ -8,8 +8,16 @@ from app.schemas import ProductCandidate, Evidence
 
 
 class XaridUzexConnector:
+    source_name = "xarid.uzex.uz"
+    source_type = "government_completed_deals_shop"
+
+    VIEW_SHOP = "shop"
+    VIEW_NATIONAL = "national"
+    VIEW_AUCTION = "auction"
+
     TRADE_API = "https://xarid-api-trade.uzex.uz"
     SHOP_API = "https://xarid-api-shop.uzex.uz"
+    AUCTION_API = "https://xarid-api-auction.uzex.uz"
 
     HEADERS = {
         "Accept": "application/json, text/plain, */*",
@@ -25,10 +33,41 @@ class XaridUzexConnector:
     SUCCESS_DEAL_STATUSES = {"Оплачена", "Поставлена"}
     SUCCESS_PAYMENT_STATUSES = {"Оплачен"}
 
+    def __init__(self, view: str = VIEW_SHOP):
+        if view not in {self.VIEW_SHOP, self.VIEW_NATIONAL, self.VIEW_AUCTION}:
+            raise ValueError(f"Unsupported view: {view}")
+
+        self.view = view
+
+        if view == self.VIEW_SHOP:
+            self.source_name = "xarid.uzex.uz"
+            self.source_type = "government_completed_deals_shop"
+            self._display_on_shop = 1
+            self._display_on_national = 0
+            self._referer_path = "/completed-deals/shop/shop"
+            self._deals_api_base = self.SHOP_API
+        elif view == self.VIEW_NATIONAL:
+            self.source_name = "xarid.uzex.uz/national"
+            self.source_type = "government_completed_deals_national"
+            self._display_on_shop = 0
+            self._display_on_national = 1
+            self._referer_path = "/completed-deals/shop/national"
+            self._deals_api_base = self.SHOP_API
+        else:
+            self.source_name = "xarid.uzex.uz/auction"
+            self.source_type = "government_completed_deals_auction"
+            self._display_on_shop = 0
+            self._display_on_national = 0
+            self._referer_path = "/completed-deals/auction"
+            self._deals_api_base = self.AUCTION_API
+
+        self.headers = dict(self.HEADERS)
+        self.headers["Referer"] = f"https://xarid.uzex.uz{self._referer_path}"
+
     async def get_categories(self, client: httpx.AsyncClient) -> list[dict[str, Any]]:
         response = await client.get(
             f"{self.TRADE_API}/Lib/GetCategories",
-            headers=self.HEADERS,
+            headers=self.headers,
             timeout=30,
         )
         response.raise_for_status()
@@ -44,7 +83,7 @@ class XaridUzexConnector:
 
         response = await client.get(
             url,
-            headers=self.HEADERS,
+            headers=self.headers,
             params={"keyword": keyword},
             timeout=30,
         )
@@ -150,8 +189,6 @@ class XaridUzexConnector:
     ) -> list[dict[str, Any]]:
         payload = {
             "region_ids": [],
-            "display_on_shop": 1,
-            "display_on_national": 0,
             "year_id": year_id,
             "from": from_row,
             "to": to_row,
@@ -159,9 +196,13 @@ class XaridUzexConnector:
             "product_code": candidate.product_code,
         }
 
+        if self.view != self.VIEW_AUCTION:
+            payload["display_on_shop"] = self._display_on_shop
+            payload["display_on_national"] = self._display_on_national
+
         response = await client.post(
-            f"{self.SHOP_API}/Common/GetCompletedDeals",
-            headers=self.HEADERS,
+            f"{self._deals_api_base}/Common/GetCompletedDeals",
+            headers=self.headers,
             json=payload,
             timeout=60,
         )
@@ -226,24 +267,48 @@ class XaridUzexConnector:
             return None
 
         if not isinstance(amount, (int, float)) or amount <= 0:
-            return float(deal_cost)
+            return None
 
         return float(deal_cost) / float(amount)
+
+    def _build_source_url(self, deal: dict[str, Any]) -> str:
+        lot_id = deal.get("lot_id")
+        if self.view == self.VIEW_NATIONAL:
+            base_url = "https://xarid.uzex.uz/completed-deals/shop/national"
+        elif self.view == self.VIEW_AUCTION:
+            base_url = "https://xarid.uzex.uz/completed-deals/auction"
+        else:
+            base_url = "https://xarid.uzex.uz/completed-deals/shop/shop"
+
+        if lot_id:
+            return f"{base_url}?lot_id={lot_id}"
+
+        return base_url
 
     def _build_evidence(self, deal: dict[str, Any]) -> Evidence:
         unit_price = self._get_unit_price(deal)
 
+        region = deal.get("customer_region_name") or deal.get("customer_region")
+
+        pcp_count = deal.get("pcp_count")
+        participants_count = int(pcp_count) if isinstance(pcp_count, (int, float)) else None
+
+        product_name = deal.get("product_name") or deal.get("category_name")
+
         raw_text = f"""
+Manba: {self.source_name}
 Lot raqami: {deal.get("lot_display_no")}
-Mahsulot: {deal.get("product_name")}
+Mahsulot: {product_name}
 Kategoriya: {deal.get("category_name")}
 Texnik tavsif:
 {deal.get("condition")}
 
 Miqdor: {deal.get("amount")}
+Boshlang‘ich narx: {deal.get("start_cost")}
 Umumiy bitim summasi: {deal.get("deal_cost")}
 Bitta dona narxi: {unit_price}
-Hudud: {deal.get("customer_region_name")}
+Ishtirokchilar soni: {participants_count}
+Hudud: {region}
 Yetkazib beruvchi: {deal.get("provider_name")}
 Bitim sanasi: {deal.get("deal_date")}
 Bitim holati: {deal.get("deal_status_name")}
@@ -251,22 +316,28 @@ To‘lov holati: {deal.get("kazna_payment_status")}
 """.strip()
 
         return Evidence(
-            source_name="xarid.uzex.uz",
-            source_type="government_completed_deals",
+            source_name=self.source_name,
+            source_type=self.source_type,
+            source_url=self._build_source_url(deal),
             lot_id=deal.get("lot_id"),
             lot_display_no=deal.get("lot_display_no"),
-            product_name=deal.get("product_name"),
+            product_name=product_name,
             category_name=deal.get("category_name"),
             condition=deal.get("condition"),
             amount=deal.get("amount"),
             deal_cost=deal.get("deal_cost"),
             unit_price=unit_price,
             currency="UZS",
-            region=deal.get("customer_region_name"),
+            region=region,
             provider_name=deal.get("provider_name"),
             deal_date=deal.get("deal_date"),
             deal_status_name=deal.get("deal_status_name"),
             payment_status=deal.get("kazna_payment_status"),
             raw_payload=deal,
             raw_text=raw_text,
+            customer_name=deal.get("customer_name"),
+            customer_inn=deal.get("customer_inn"),
+            provider_inn=deal.get("provider_inn"),
+            participants_count=participants_count,
+            start_cost=deal.get("start_cost"),
         )

@@ -27,21 +27,31 @@ class CandidateSelectorService:
             return None
 
         if len(candidates) == 1:
+            candidates[0].selection_reason = "Faqat bitta candidate topildi, shuning uchun shu tanlandi."
             return candidates[0]
 
         prompt = self._build_prompt(user_query, search_plan, candidates)
 
         raw = await self._call_openrouter(prompt)
 
-        selected_code = self._extract_selected_product_code(raw)
+        selected_code, reason = self._extract_selection(raw)
 
         if not selected_code:
+            candidates[0].selection_reason = (
+                reason
+                or "LLM aniq product_code qaytarmadi; ro‘yxatdagi eng yuqori score candidate tanlandi."
+            )
             return candidates[0]
 
         for candidate in candidates:
             if candidate.product_code == selected_code:
+                candidate.selection_reason = reason or "LLM tanlovi asosida tanlandi."
                 return candidate
 
+        candidates[0].selection_reason = (
+            reason
+            or "LLM product_code qaytardi, lekin u candidate ro‘yxatida topilmadi; eng yuqori score candidate tanlandi."
+        )
         return candidates[0]
 
     def _build_prompt(
@@ -131,7 +141,7 @@ JSON format:
         data = response.json()
         return data["choices"][0]["message"]["content"]
 
-    def _extract_selected_product_code(self, raw: str) -> str | None:
+    def _extract_selection(self, raw: str) -> tuple[str | None, str | None]:
         try:
             text = raw.strip()
 
@@ -141,7 +151,7 @@ JSON format:
                 text = re.sub(r"```$", "", text).strip()
 
             data = json.loads(text)
-            return data.get("selected_product_code")
+            return data.get("selected_product_code"), data.get("reason")
 
         except Exception:
-            return None
+            return None, None

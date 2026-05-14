@@ -15,6 +15,7 @@ from app.services.candidate_selector_service import CandidateSelectorService
 from app.services.price_analysis_service import PriceAnalysisService
 from app.services.llm_prompt_builder import LLMPromptBuilder
 from app.services.generic_output_validator import GenericOutputValidator
+from app.services.search_orchestrator import SearchOrchestrator
 
 
 load_dotenv()
@@ -41,6 +42,7 @@ app.add_middleware(
 class GenerateRequest(BaseModel):
     query: str = Field(..., min_length=2)
     period_months: int = Field(default=12, ge=1, le=60)
+    enabled_sources: list[str] | None = None
 
 
 def extract_json(text: str) -> dict[str, Any]:
@@ -173,94 +175,136 @@ async def generate_technical_task(request: GenerateRequest):
         keywords = list(dict.fromkeys([k for k in keywords if k]))
 
         if not keywords:
-            raise HTTPException(
-                status_code=404,
-                detail="Qidiruv keywordlari topilmadi.",
+            keywords = [request.query]
+
+        enabled_sources = request.enabled_sources or [
+            "xarid.uzex.uz",
+            "xarid.uzex.uz/national",
+            "xarid.uzex.uz/auction",
+            "etender.uzex.uz",
+        ]
+
+        selected = None
+        candidates = []
+
+        xarid_sources = {"xarid.uzex.uz", "xarid.uzex.uz/national", "xarid.uzex.uz/auction"}
+
+        if any(source in enabled_sources for source in xarid_sources):
+            candidates = await connector.find_product_candidates(
+                keywords=keywords,
+                max_candidates=15,
             )
 
-        candidates = await connector.find_product_candidates(
-            keywords=keywords,
-            max_candidates=15,
-        )
+            if candidates:
+                selected = await candidate_selector.select_best_candidate(
+                    user_query=request.query,
+                    search_plan=search_plan,
+                    candidates=candidates,
+                )
 
-        if not candidates:
-            raise HTTPException(
-                status_code=404,
-                detail="Xarid katalogidan mos product candidate topilmadi.",
-            )
+        
+        orchestrator = SearchOrchestrator()
 
-        selected = await candidate_selector.select_best_candidate(
+        orchestration = await orchestrator.collect_all_sources(
             user_query=request.query,
-            search_plan=search_plan,
-            candidates=candidates,
+            keywords=keywords,
+            selected_product=selected,
+            period_months=request.period_months,
+            page_size=20,
+            max_pages=3,
+            enabled_sources=enabled_sources,
         )
 
-        if selected is None:
+        evidences_by_source = orchestration["evidences_by_source"]
+        evidences = orchestration["all_evidences"]
+        source_status = orchestration["source_status"]
+
+        price_analysis = price_service.analyze_by_source(evidences_by_source)
+
+        if (price_analysis.get("global") or {}).get("count", 0) == 0 and not evidences:
             raise HTTPException(
                 status_code=404,
-                detail="Mos product_code tanlanmadi.",
+                detail=f"Oxirgi {request.period_months} oy bo‘yicha evidence topilmadi.",
             )
 
-        
-        now = datetime.now()
-        cutoff = now - timedelta(days=request.period_months * 31)
-        years_to_scan = list(range(now.year, cutoff.year - 1, -1))
+        selected_product_dict = (
+            {
+                "name": selected.name,
+                "product_code": selected.product_code,
+                "category_id": selected.category_id,
+                "category_name": selected.category_name,
+                "selection_reason": getattr(selected, "selection_reason", None),
+            }
+            if selected is not None
+            else None
+        )
 
-        all_evidences = []
+        def evidence_to_dict(ev):
+            return {
+                "source_name": ev.source_name,
+                "source_type": ev.source_type,
+                "source_url": ev.source_url,
+                "lot_id": ev.lot_id,
+                "lot_display_no": ev.lot_display_no,
+                "product_name": ev.product_name,
+                "category_name": ev.category_name,
+                "condition": ev.condition,
+                "amount": ev.amount,
+                "deal_cost": ev.deal_cost,
+                "unit_price": ev.unit_price,
+                "currency": ev.currency,
+                "region": ev.region,
+                "customer_name": ev.customer_name,
+                "customer_inn": ev.customer_inn,
+                "provider_name": ev.provider_name,
+                "provider_inn": ev.provider_inn,
+                "participants_count": ev.participants_count,
+                "start_cost": ev.start_cost,
+                "deal_date": ev.deal_date,
+                "deal_status_name": ev.deal_status_name,
+                "payment_status": ev.payment_status,
+                "contract_file_name": ev.contract_file_name,
+                "contract_file_path": ev.contract_file_path,
+                "additional_protocol_file_name": ev.additional_protocol_file_name,
+                "additional_protocol_file_path": ev.additional_protocol_file_path,
+            }
 
-        for year in years_to_scan:
-            year_evidences = await connector.collect_evidences_for_candidate(
-                candidate=selected,
-                year_id=year,
-                page_size=20,
-                max_pages=3,
-            )
-            all_evidences.extend(year_evidences)
-        evidences = filter_by_period(
-            evidences=all_evidences,
-            period_months=request.period_months,
-        )   
-        if not evidences:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Oxirgi {request.period_months} oy bo‘yicha muvaffaqiyatli bitim topilmadi.",
-        ) 
-        
+        evidences_json = [evidence_to_dict(ev) for ev in evidences[:200]]
+        evidences_by_source_json = {
+            source: [evidence_to_dict(ev) for ev in items[:200]]
+            for source, items in evidences_by_source.items()
+        }
 
-        price_analysis = price_service.analyze(evidences)
+        source_summaries = {}
+        for source, items in evidences_by_source.items():
+            eligible_count = sum(1 for ev in items if isinstance(ev.unit_price, (int, float)))
+            by_source_item = (price_analysis.get("by_source") or {}).get(source) or {}
+            note = by_source_item.get("note") if isinstance(by_source_item, dict) else None
+            source_summaries[source] = {
+                "total_evidences": len(items),
+                "price_eligible_count": eligible_count,
+                "note": note,
+            }
 
         source_data = {
             "user_query": request.query,
             "keywords": keywords,
             "search_plan": search_plan,
-            "selected_product": {
-                "name": selected.name,
-                "product_code": selected.product_code,
-                "category_id": selected.category_id,
-                "category_name": selected.category_name,
-            },
+            "selected_product": selected_product_dict,
+            "source_status": source_status,
             "price_analysis": price_analysis,
-            "evidences": [
-                {
-                    "lot_display_no": ev.lot_display_no,
-                    "product_name": ev.product_name,
-                    "category_name": ev.category_name,
-                    "condition": ev.condition,
-                    "unit_price": ev.unit_price,
-                    "region": ev.region,
-                    "deal_date": ev.deal_date,
-                    "deal_status_name": ev.deal_status_name,
-                    "payment_status": ev.payment_status,
-                }
-                for ev in evidences[:30]
-            ],
+            "evidences_by_source": {
+                source: [evidence_to_dict(ev) for ev in items[:20]]
+                for source, items in evidences_by_source.items()
+            },
         }
 
         prompt = prompt_builder.build(
             user_query=request.query,
             selected_product=selected,
+            source_status=source_status,
             price_analysis=price_analysis,
-            evidences=evidences,
+            evidences_by_source=evidences_by_source,
         )
 
         raw_llm = await call_openrouter(prompt)
@@ -273,11 +317,17 @@ async def generate_technical_task(request: GenerateRequest):
 
         return {
             "query": request.query,
-            "source": "xarid.uzex.uz",
+            "source": "multi-source",
+            "enabled_sources": enabled_sources,
             "keywords": keywords,
             "search_plan": search_plan,
-            "selected_product": source_data["selected_product"],
+            "candidate_selection_reason": getattr(selected, "selection_reason", None) if selected else None,
+            "selected_product": selected_product_dict,
+            "source_status": source_status,
             "price_analysis": price_analysis,
+            "evidences": evidences_json,
+            "evidences_by_source": evidences_by_source_json,
+            "source_summaries": source_summaries,
             "technical_task": llm_result,
             "validation_warnings": validation_warnings,
         }
