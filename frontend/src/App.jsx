@@ -35,6 +35,16 @@ function formatMoney(value) {
   return new Intl.NumberFormat("uz-UZ").format(value) + " so‘m";
 }
 
+function formatMoneyCompact(value) {
+  if (!isFiniteNumber(value)) return "—";
+  const abs = Math.abs(value);
+  const sign = value < 0 ? "-" : "";
+  if (abs >= 1_000_000_000_000) return `${sign}${(abs / 1_000_000_000_000).toFixed(1)} trln so‘m`;
+  if (abs >= 1_000_000_000) return `${sign}${(abs / 1_000_000_000).toFixed(1)} mlrd so‘m`;
+  if (abs >= 1_000_000) return `${sign}${(abs / 1_000_000).toFixed(1)} mln so‘m`;
+  return formatMoney(value);
+}
+
 function downloadJson(data, filename = "tenderai_result.json") {
   const blob = new Blob([JSON.stringify(data, null, 2)], {
     type: "application/json",
@@ -404,6 +414,214 @@ function buildGroupedPriceStats(evidences, keyFn) {
   }
 
   return rows.sort((a, b) => b.count - a.count);
+}
+
+const SUCCESS_STATUS_HINTS = [
+  "оплач", // Оплачено/Оплачена
+  "постав", // Поставлена/Поставлено
+  "выполн",
+  "принят",
+  "qabul",
+  "amalga",
+  "yetkazib",
+  "shartnoma tuzil",
+  "g'olib",
+  "golib",
+];
+
+const RISK_STATUS_HINTS = [
+  "отмен",
+  "аннул",
+  "не состоя",
+  "неисполн",
+  "rad",
+  "bekor",
+  "muvaffaqiyatsiz",
+  "jarima",
+  "штраф",
+];
+
+function classifyEvidenceOutcome(ev) {
+  const status = normalizeText(ev?.deal_status_name);
+  const payment = normalizeText(ev?.payment_status);
+  const text = `${status} ${payment}`.trim();
+
+  if (!text) return "unknown";
+  if (RISK_STATUS_HINTS.some((h) => text.includes(h))) return "risky";
+  if (SUCCESS_STATUS_HINTS.some((h) => text.includes(h))) return "success";
+  return "unknown";
+}
+
+function mostCommonKey(counts) {
+  let bestKey = null;
+  let bestCount = 0;
+  for (const [key, count] of counts.entries()) {
+    if (count > bestCount) {
+      bestKey = key;
+      bestCount = count;
+    }
+  }
+  return bestKey;
+}
+
+function computeSupplierRiskLabel(stats) {
+  const total = stats.total_deals || 0;
+  if (total <= 0) return "—";
+
+  const riskyRate = stats.risky_deals / total;
+  const overpricedRate = stats.price_deals > 0 ? stats.overpriced_deals / stats.price_deals : 0;
+  const singleBidderRate = stats.total_deals > 0 ? stats.single_bidder_deals / stats.total_deals : 0;
+
+  const riskScore = riskyRate * 60 + overpricedRate * 30 + singleBidderRate * 10;
+
+  if (riskScore >= 35) return "Yuqori";
+  if (riskScore >= 15) return "O‘rta";
+  return "Past";
+}
+
+function computeSupplierRating(stats) {
+  const total = stats.total_deals || 0;
+  if (total <= 0) return null;
+
+  const successRate = stats.success_deals / total;
+  const riskyRate = stats.risky_deals / total;
+  const unknownRate = stats.unknown_deals / total;
+
+  const priceDeals = stats.price_deals || 0;
+  const overpricedRate = priceDeals > 0 ? stats.overpriced_deals / priceDeals : null;
+
+  let score = 0;
+
+  // Success vs risk
+  score += successRate * 45;
+  score += (1 - riskyRate) * 25;
+  score += (1 - unknownRate) * 10;
+
+  // Price fairness (if we have unit_price deals)
+  if (overpricedRate !== null) score += (1 - overpricedRate) * 15;
+  else score += 7.5; // neutral if unknown
+
+  // Experience bonus
+  score += Math.min(5, Math.log10(total + 1) * 5);
+
+  return Math.max(0, Math.min(100, Math.round(score)));
+}
+
+function buildSupplierPerformance(evidences, priceGlobal) {
+  const list = Array.isArray(evidences) ? evidences : [];
+
+  const recMin = isFiniteNumber(priceGlobal?.recommended_min_price) ? priceGlobal.recommended_min_price : null;
+  const recMax = isFiniteNumber(priceGlobal?.recommended_max_price) ? priceGlobal.recommended_max_price : null;
+
+  const grouped = new Map();
+
+  for (const ev of list) {
+    const providerNameRaw = String(ev?.provider_name || "").trim();
+    const providerInnRaw = String(ev?.provider_inn || "").trim();
+    const providerName = providerNameRaw || "Noma’lum";
+    const key = `${providerName}||${providerInnRaw}`;
+
+    const item =
+      grouped.get(key) || {
+        key,
+        provider_name: providerName,
+        provider_inn: providerInnRaw || null,
+        total_deals: 0,
+        success_deals: 0,
+        risky_deals: 0,
+        unknown_deals: 0,
+        total_sum: 0,
+        total_sum_known: 0,
+        unit_sum: 0,
+        unit_sum_known: 0,
+        price_deals: 0,
+        overpriced_deals: 0,
+        underpriced_deals: 0,
+        inrange_deals: 0,
+        single_bidder_deals: 0,
+        last_date: null,
+        regions: new Set(),
+        categories: new Map(),
+        deals: [],
+      };
+
+    item.total_deals += 1;
+    item.deals.push(ev);
+
+    const outcome = classifyEvidenceOutcome(ev);
+    if (outcome === "success") item.success_deals += 1;
+    else if (outcome === "risky") item.risky_deals += 1;
+    else item.unknown_deals += 1;
+
+    if (isFiniteNumber(ev?.deal_cost)) {
+      item.total_sum += ev.deal_cost;
+      item.total_sum_known += 1;
+    }
+
+    if (isFiniteNumber(ev?.amount)) {
+      item.unit_sum += ev.amount;
+      item.unit_sum_known += 1;
+    }
+
+    if (ev?.region) item.regions.add(ev.region);
+
+    const category = String(ev?.category_name || ev?.product_name || "—").trim();
+    if (category) item.categories.set(category, (item.categories.get(category) || 0) + 1);
+
+    if (Number(ev?.participants_count) === 1) item.single_bidder_deals += 1;
+
+    if (isFiniteNumber(ev?.unit_price)) {
+      item.price_deals += 1;
+      if (recMin !== null && recMax !== null) {
+        if (ev.unit_price < recMin) item.underpriced_deals += 1;
+        else if (ev.unit_price > recMax) item.overpriced_deals += 1;
+        else item.inrange_deals += 1;
+      }
+    }
+
+    const date = parseDateSafe(ev?.deal_date);
+    if (date) {
+      if (!item.last_date || date > item.last_date) item.last_date = date;
+    }
+
+    grouped.set(key, item);
+  }
+
+  const rows = [];
+
+  for (const item of grouped.values()) {
+    const mainCategory = mostCommonKey(item.categories);
+    const rating = computeSupplierRating(item);
+    const riskLabel = computeSupplierRiskLabel(item);
+    const dealsSorted = [...item.deals].sort((a, b) => {
+      const da = parseDateSafe(a?.deal_date);
+      const db = parseDateSafe(b?.deal_date);
+      if (!da && !db) return 0;
+      if (!da) return 1;
+      if (!db) return -1;
+      return db.getTime() - da.getTime();
+    });
+
+    rows.push({
+      ...item,
+      main_category: mainCategory,
+      rating,
+      risk: riskLabel,
+      last_date: item.last_date ? item.last_date.toISOString() : null,
+      regions: Array.from(item.regions),
+      deals_sorted: dealsSorted,
+    });
+  }
+
+  rows.sort((a, b) => {
+    const ra = typeof a.rating === "number" ? a.rating : -1;
+    const rb = typeof b.rating === "number" ? b.rating : -1;
+    if (rb !== ra) return rb - ra;
+    if (b.success_deals !== a.success_deals) return b.success_deals - a.success_deals;
+    return b.total_deals - a.total_deals;
+  });
+
+  return rows;
 }
 
 function extractTechnicalHighlights(evidences, limit = 20) {
@@ -1076,6 +1294,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("result");
   const [activeEvidenceSource, setActiveEvidenceSource] = useState("all");
   const [evidenceFilters, setEvidenceFilters] = useState(() => getDefaultEvidenceFilters());
+  const [supplierViewer, setSupplierViewer] = useState(null);
 
   function toggleSource(source) {
     setEnabledSources((prev) =>
@@ -1162,9 +1381,9 @@ export default function App() {
     () => buildGroupedPriceStats(evidences, (ev) => ev?.region),
     [evidences]
   );
-  const providerStats = useMemo(
-    () => buildGroupedPriceStats(evidences, (ev) => ev?.provider_name),
-    [evidences]
+  const supplierRows = useMemo(
+    () => buildSupplierPerformance(evidences, priceGlobal),
+    [evidences, priceGlobal]
   );
   const technicalHighlights = useMemo(() => extractTechnicalHighlights(evidences), [evidences]);
   const technicalParams = useMemo(() => {
@@ -1271,6 +1490,153 @@ export default function App() {
 
   return (
     <div className="app">
+      {supplierViewer && (
+        <div
+          className="modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setSupplierViewer(null)}
+        >
+          <div className="modal-card modal-wide" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <div className="modal-title">{supplierViewer?.provider_name || "Yetkazib beruvchi"}</div>
+                <div className="modal-subtitle">
+                  {[
+                    supplierViewer?.provider_inn ? `INN: ${supplierViewer.provider_inn}` : null,
+                    supplierViewer?.risk ? `Risk: ${supplierViewer.risk}` : null,
+                    typeof supplierViewer?.rating === "number" ? `Reyting: ${supplierViewer.rating}/100` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </div>
+              </div>
+              <button type="button" className="modal-close" onClick={() => setSupplierViewer(null)}>
+                Yopish
+              </button>
+            </div>
+
+            <div className="modal-body">
+              <div className="stats-grid">
+                <StatCard
+                  label="Muvaffaqiyatli bitimlar"
+                  value={`${supplierViewer.success_deals} ta`}
+                  hint="Status bo‘yicha soddalashtirilgan tasnif"
+                />
+                <StatCard
+                  label="Riskli / bekor"
+                  value={`${supplierViewer.risky_deals} ta`}
+                  hint="Bekor/Rad/Jarima va h.k."
+                />
+                <StatCard
+                  label="Umumiy summa"
+                  value={formatMoneyCompact(supplierViewer.total_sum)}
+                  hint={
+                    supplierViewer.total_sum_known === supplierViewer.total_deals
+                      ? `${supplierViewer.total_deals} ta bitim`
+                      : `${supplierViewer.total_sum_known}/${supplierViewer.total_deals} ta bitimda summa bor`
+                  }
+                />
+                <StatCard
+                  label="Unit (ma’lum)"
+                  value={
+                    supplierViewer.unit_sum_known > 0
+                      ? `${new Intl.NumberFormat("uz-UZ").format(supplierViewer.unit_sum)} dona`
+                      : "—"
+                  }
+                  hint={
+                    supplierViewer.unit_sum_known > 0
+                      ? `${supplierViewer.unit_sum_known} ta bitimda amount bor`
+                      : "Etender’da amount yo‘q bo‘lishi mumkin"
+                  }
+                />
+                <StatCard
+                  label="Asosiy kategoriya"
+                  value={supplierViewer.main_category || "—"}
+                />
+                <StatCard
+                  label="Oxirgi savdo"
+                  value={formatDate(supplierViewer.last_date)}
+                />
+                <StatCard
+                  label="Unit narxli bitimlar"
+                  value={`${supplierViewer.price_deals || 0} ta`}
+                  hint={
+                    supplierViewer.price_deals > 0
+                      ? `Mos: ${supplierViewer.inrange_deals || 0}, Qimmat: ${supplierViewer.overpriced_deals || 0}, Juda past: ${supplierViewer.underpriced_deals || 0}`
+                      : "unit_price yo‘q bo‘lishi mumkin"
+                  }
+                />
+              </div>
+
+              <p className="muted supplier-note">
+                Reyting va risk — faqat ochiq tender ma’lumotlari asosida hisoblangan indikator.
+                Yetkazib berish sifati, kechikish, jarima va shikoyat kabi ichki ma’lumotlar bo‘lmasa,
+                bu ko‘rsatkichlar 100% kafolat bermaydi.
+              </p>
+
+              <div className="table-wrap">
+                <table className="supplier-history">
+                  <thead>
+                    <tr>
+                      <th>Sana</th>
+                      <th>Manba</th>
+                      <th>Lot</th>
+                      <th>Mahsulot</th>
+                      <th>Buyurtmachi</th>
+                      <th>Summa</th>
+                      <th>Narx</th>
+                      <th>Status</th>
+                      <th>Link</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(supplierViewer.deals_sorted || []).slice(0, 50).map((ev, idx) => {
+                      const dealCostText = isFiniteNumber(ev?.deal_cost) ? formatMoney(ev.deal_cost) : "—";
+                      const unitPriceText = isFiniteNumber(ev?.unit_price) ? formatMoney(ev.unit_price) : "—";
+                      const priceText =
+                        isFiniteNumber(ev?.unit_price) ? unitPriceText : isFiniteNumber(ev?.deal_cost) ? dealCostText : "—";
+
+                      const outcome = classifyEvidenceOutcome(ev);
+                      const outcomeLabel =
+                        outcome === "success" ? "Muvaffaqiyatli" : outcome === "risky" ? "Riskli" : "Noma’lum";
+                      const badgeClass = outcome === "success" ? "badge ok" : outcome === "risky" ? "badge bad" : "badge";
+
+                      return (
+                        <tr key={`${ev?.lot_display_no || "lot"}_${idx}`}>
+                          <td>{formatDate(ev?.deal_date)}</td>
+                          <td>{ev?.source_name || "—"}</td>
+                          <td>{ev?.lot_display_no || "—"}</td>
+                          <td>{ev?.product_name || ev?.category_name || "—"}</td>
+                          <td>{ev?.customer_name || "—"}</td>
+                          <td>{dealCostText}</td>
+                          <td>{priceText}</td>
+                          <td>
+                            <div className="status-cell">
+                              <div className={badgeClass}>{outcomeLabel}</div>
+                              <div className="muted tiny">{ev?.deal_status_name || "—"}</div>
+                            </div>
+                          </td>
+                          <td>
+                            {ev?.source_url ? (
+                              <a href={ev.source_url} target="_blank" rel="noreferrer">
+                                Ochish
+                              </a>
+                            ) : (
+                              "—"
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="hero">
         <div className="hero-badge">
           <Database size={16} />
@@ -1862,29 +2228,74 @@ export default function App() {
               <Card className="full">
                 <SectionTitle
                   icon={<BarChart3 size={22} />}
-                  title="Supplier / provider tahlili"
-                  subtitle="Yetkazib beruvchilar kesimida unit_price"
+                  title="Yetkazib beruvchi reytingi"
+                  subtitle="Bitimlar soni, umumiy summa, unit (amount) va risk indikatori"
                 />
-                {providerStats.length > 0 ? (
+                {supplierRows.length > 0 ? (
                   <div className="table-wrap">
                     <table>
                       <thead>
                         <tr>
-                          <th>Yetkazib beruvchi</th>
-                          <th>Bitimlar soni</th>
-                          <th>Median narx</th>
-                          <th>O‘rtacha narx</th>
+                          <th>Firma</th>
+                          <th>Muvaffaqiyatli</th>
+                          <th>Riskli</th>
+                          <th>Bitimlar</th>
+                          <th>Unit (ma’lum)</th>
+                          <th>Umumiy summa</th>
+                          <th>Asosiy kategoriya</th>
+                          <th>Risk</th>
+                          <th>Reyting</th>
+                          <th></th>
                         </tr>
                       </thead>
                       <tbody>
-                        {providerStats.slice(0, 20).map((row) => (
-                          <tr key={row.key}>
-                            <td>{row.key}</td>
-                            <td>{row.count}</td>
-                            <td>{formatMoney(row.median)}</td>
-                            <td>{formatMoney(row.avg)}</td>
-                          </tr>
-                        ))}
+                        {supplierRows.slice(0, 25).map((row) => {
+                          const riskClass =
+                            row.risk === "Past"
+                              ? "badge ok"
+                              : row.risk === "Yuqori"
+                                ? "badge bad"
+                                : row.risk === "O‘rta"
+                                  ? "badge warn"
+                                  : "badge";
+
+                          return (
+                            <tr key={row.key}>
+                              <td>
+                                <div className="supplier-cell">
+                                  <button
+                                    type="button"
+                                    className="supplier-name-btn"
+                                    onClick={() => setSupplierViewer(row)}
+                                    title="Batafsil ko‘rish"
+                                  >
+                                    {row.provider_name}
+                                  </button>
+                                  {row.provider_inn && <div className="muted tiny">INN: {row.provider_inn}</div>}
+                                </div>
+                              </td>
+                              <td>{row.success_deals}</td>
+                              <td>{row.risky_deals}</td>
+                              <td>{row.total_deals}</td>
+                              <td>
+                                {row.unit_sum_known > 0 ? new Intl.NumberFormat("uz-UZ").format(row.unit_sum) : "—"}
+                              </td>
+                              <td>{formatMoneyCompact(row.total_sum)}</td>
+                              <td className="muted" title={row.main_category || ""}>
+                                {row.main_category ? String(row.main_category).slice(0, 56) : "—"}
+                              </td>
+                              <td>
+                                <span className={riskClass}>{row.risk}</span>
+                              </td>
+                              <td>{typeof row.rating === "number" ? `${row.rating}/100` : "—"}</td>
+                              <td>
+                                <button type="button" className="desc-btn" onClick={() => setSupplierViewer(row)}>
+                                  Batafsil
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>

@@ -628,6 +628,54 @@ td {
   font-weight: 900;
 }
 
+.badge.ok {
+  background: #ecfdf5;
+  border-color: #bbf7d0;
+  color: #15803d;
+}
+
+.badge.warn {
+  background: #fff7ed;
+  border-color: #fed7aa;
+  color: #c2410c;
+}
+
+.badge.bad {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+.supplier-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.supplier-name-btn {
+  border: none;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+  font-weight: 1000;
+  color: #0f172a;
+  cursor: pointer;
+}
+
+.supplier-name-btn:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+.supplier-note {
+  margin: 14px 0;
+  line-height: 1.65;
+}
+
+.supplier-history {
+  min-width: 1050px;
+}
+
 .tiny {
   font-size: 12px;
 }
@@ -682,12 +730,22 @@ td {
   overflow: hidden;
 }
 
+.modal-card.modal-wide {
+  width: min(1180px, 100%);
+}
+
 .modal-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 12px;
+}
+
+.modal-body {
+  max-height: calc(78vh - 84px);
+  overflow: auto;
+  padding-right: 4px;
 }
 
 .modal-title {
