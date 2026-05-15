@@ -1417,6 +1417,23 @@ export default function App() {
 
                 <Card className="full">
                   <SectionTitle
+                    icon={<FileText size={22} />}
+                    title="Texnik parametrlar summary"
+                    subtitle="Tender tavsiflaridan ajratilgan ko‘p uchragan talablar"
+                  />
+                  {technicalChips.length > 0 ? (
+                    <div className="chips">
+                      {technicalChips.map((t) => (
+                        <span key={t}>{t}</span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="muted">Ma’lumot yo‘q</p>
+                  )}
+                </Card>
+
+                <Card className="full">
+                  <SectionTitle
                     icon={<BarChart3 size={22} />}
                     title="Narx tahlili"
                     subtitle="Bitta dona narxi bo‘yicha hisoblangan"
@@ -1559,26 +1576,9 @@ export default function App() {
 
               <Card className="full">
                 <SectionTitle
-                  icon={<FileText size={22} />}
-                  title="Texnik parametrlar summary"
-                  subtitle="Evidence tavsiflaridan ajratilgan ko‘p uchragan talablar"
-                />
-                {technicalChips.length > 0 ? (
-                  <div className="chips">
-                    {technicalChips.map((t) => (
-                      <span key={t}>{t}</span>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="muted">Ma’lumot yo‘q</p>
-                )}
-              </Card>
-
-              <Card className="full">
-                <SectionTitle
                   icon={<BarChart3 size={22} />}
                   title="Hududlar bo‘yicha narx tahlili"
-                  subtitle="unit_price bo‘yicha hisoblangan"
+                  subtitle="Bitimlar soni = unit_price mavjud bo‘lgan bitimlar"
                 />
                 {regionStats.length > 0 ? (
                   <div className="table-wrap">
