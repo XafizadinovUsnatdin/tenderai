@@ -1,16 +1,39 @@
-# React + Vite
+# TenderAI Frontend (React + Vite)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+TenderAI backend (`FastAPI`) dan natijalarni olib, **multi-source evidence**, **narx tahlili** va **texnik topshiriq**ni dashboard ko‘rinishida ko‘rsatadi.
 
-Currently, two official plugins are available:
+## Ishga tushirish
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```powershell
+cd d:\BRB\9\tenderai\xarid-audit\frontend
+npm install
+npm run dev
+```
 
-## React Compiler
+Brauzer: `http://127.0.0.1:5173`
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Backend URL
 
-## Expanding the ESLint configuration
+Frontend backendga quyidagi URL orqali murojaat qiladi:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- `http://127.0.0.1:8000/api/generate`
+
+Agar backend host/port o‘zgarsa, `src/App.jsx` ichidagi `API_URL` ni moslab qo‘ying.
+
+## UI imkoniyatlari
+
+- Qidiruv: mahsulot/xizmat nomi + davr (`period_months`)
+- Manbalarni tanlash:
+  - `xarid.uzex.uz` (shop)
+  - `xarid.uzex.uz/national` (national)
+  - `xarid.uzex.uz/auction` (auction)
+  - `etender.uzex.uz` (deals list)
+- Manba holati kartalari (`source_status`)
+- Tanlangan mahsulot va “Nega shu tanlandi?” (`candidate_selection_reason`)
+- Narx tahlili:
+  - Global (faqat `unit_price` bor evidence’lar)
+  - By-source
+- Evidence tab’lari (All + source bo‘yicha), filterlar, CSV export
+- Narx trend grafigi (unit_price bo‘lsa)
+- Hudud / provider kesimida narx tahlili
+- Texnik parametrlar summary (chip’lar)
