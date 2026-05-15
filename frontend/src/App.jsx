@@ -811,9 +811,17 @@ function EvidenceTable({ evidences }) {
 
             const contractHref = buildFileUrl(ev?.source_name, ev?.contract_file_path);
             const protocolHref = buildFileUrl(ev?.source_name, ev?.additional_protocol_file_path);
+            const protocolName =
+              ev?.additional_protocol_file_name ||
+              (ev?.additional_protocol_file_path
+                ? String(ev.additional_protocol_file_path).split("/").pop()
+                : null);
+            const contractName =
+              ev?.contract_file_name ||
+              (ev?.contract_file_path ? String(ev.contract_file_path).split("/").pop() : null);
 
-              return (
-                <tr key={index}>
+            return (
+              <tr key={index}>
                 <td>
                   <div className="source-cell">
                     <span>{ev?.source_name || "—"}</span>
@@ -851,13 +859,16 @@ function EvidenceTable({ evidences }) {
                   <div className="files-cell">
                     {(ev?.additional_protocol_file_name || ev?.additional_protocol_file_path) ? (
                       <div className="file-row">
-                        <span className="file-label">Bayonnoma:</span>{" "}
+                        <span className="file-label">Bayonnoma:</span>
+                        <span className="file-name" title={ev?.additional_protocol_file_path || ""}>
+                          {protocolName || "—"}
+                        </span>
                         {protocolHref ? (
-                          <a href={protocolHref} target="_blank" rel="noreferrer">
-                            {ev?.additional_protocol_file_name || "Fayl"}
+                          <a className="file-open" href={protocolHref} target="_blank" rel="noreferrer">
+                            Ochish
                           </a>
                         ) : (
-                          <span>{ev?.additional_protocol_file_name || "—"}</span>
+                          <span className="muted tiny">—</span>
                         )}
                       </div>
                     ) : (
@@ -866,13 +877,16 @@ function EvidenceTable({ evidences }) {
 
                     {(ev?.contract_file_name || ev?.contract_file_path) ? (
                       <div className="file-row">
-                        <span className="file-label">Shartnoma:</span>{" "}
+                        <span className="file-label">Shartnoma:</span>
+                        <span className="file-name" title={ev?.contract_file_path || ""}>
+                          {contractName || "—"}
+                        </span>
                         {contractHref ? (
-                          <a href={contractHref} target="_blank" rel="noreferrer">
-                            {ev?.contract_file_name || "Fayl"}
+                          <a className="file-open" href={contractHref} target="_blank" rel="noreferrer">
+                            Ochish
                           </a>
                         ) : (
-                          <span>{ev?.contract_file_name || "—"}</span>
+                          <span className="muted tiny">—</span>
                         )}
                       </div>
                     ) : (
@@ -1139,6 +1153,8 @@ export default function App() {
   const priceGlobal = getPriceGlobal(result);
   const priceBySource = getPriceBySource(result);
   const selected = result?.selected_product;
+  const candidates = result?.candidates || [];
+  const candidateConfidence = result?.candidate_confidence || null;
   const evidences = result?.evidences || [];
 
   const monthlySeries = useMemo(() => buildMonthlyPriceSeries(evidences), [evidences]);
@@ -1159,6 +1175,41 @@ export default function App() {
     const merged = [...technicalParams, ...technicalHighlights].map((t) => String(t || "").trim()).filter(Boolean);
     return Array.from(new Set(merged)).slice(0, 28);
   }, [technicalParams, technicalHighlights]);
+
+  const alternativeCandidates = useMemo(() => {
+    const list = Array.isArray(candidates) ? candidates : [];
+    const selectedCode = selected?.product_code;
+    return list.filter((c) => c?.product_code && c.product_code !== selectedCode).slice(0, 8);
+  }, [candidates, selected?.product_code]);
+
+  const auditFlags = useMemo(() => {
+    const list = Array.isArray(evidences) ? evidences : [];
+    const participantsOne = [];
+    const bigStartDealDelta = [];
+    const deltaThresholdPct = 50;
+
+    for (const ev of list) {
+      const participants = ev?.participants_count;
+      if (participants !== null && participants !== undefined && Number(participants) === 1) {
+        participantsOne.push(ev);
+      }
+
+      if (isFiniteNumber(ev?.start_cost) && isFiniteNumber(ev?.deal_cost) && ev.start_cost > 0) {
+        const pct = ((ev.deal_cost - ev.start_cost) / ev.start_cost) * 100;
+        if (Math.abs(pct) >= deltaThresholdPct) {
+          bigStartDealDelta.push({ ev, pct });
+        }
+      }
+    }
+
+    bigStartDealDelta.sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct));
+
+    return {
+      deltaThresholdPct,
+      participantsOne,
+      bigStartDealDelta,
+    };
+  }, [evidences]);
 
   const tabItems = useMemo(() => {
     const count = evidences.length;
@@ -1300,6 +1351,36 @@ export default function App() {
                   <span>etender.uzex.uz</span>
                 </label>
               </div>
+              <div className="source-presets">
+                <button
+                  type="button"
+                  className="secondary-btn small"
+                  onClick={() =>
+                    setEnabledSources([
+                      "xarid.uzex.uz",
+                      "xarid.uzex.uz/national",
+                      "xarid.uzex.uz/auction",
+                      "etender.uzex.uz",
+                    ])
+                  }
+                >
+                  Hammasi
+                </button>
+                <button
+                  type="button"
+                  className="secondary-btn small"
+                  onClick={() => setEnabledSources(["xarid.uzex.uz", "xarid.uzex.uz/national"])}
+                >
+                  Narx tahlili
+                </button>
+                <button
+                  type="button"
+                  className="secondary-btn small"
+                  onClick={() => setEnabledSources(["etender.uzex.uz", "xarid.uzex.uz/auction"])}
+                >
+                  Audit
+                </button>
+              </div>
             </div>
             <button className="primary-btn" disabled={loading}>
               {loading ? (
@@ -1415,6 +1496,70 @@ export default function App() {
                   </div>
                 </Card>
 
+                {Array.isArray(candidates) && candidates.length > 0 && (
+                  <Card className="full">
+                    <SectionTitle
+                      icon={<PackageSearch size={22} />}
+                      title="Alternative candidates"
+                      subtitle="Xarid katalogidan topilgan boshqa variantlar"
+                    />
+
+                    {candidateConfidence && (
+                      <div className="stats-grid">
+                        <StatCard
+                          label="Candidate soni"
+                          value={candidateConfidence.candidate_count ?? candidates.length}
+                        />
+                        <StatCard
+                          label="Tanlangan rank"
+                          value={candidateConfidence.selected_rank ?? "—"}
+                          hint="1 = eng yuqori score"
+                        />
+                        <StatCard
+                          label="Top-2 score farqi"
+                          value={
+                            typeof candidateConfidence.score_gap_top_vs_second === "number"
+                              ? candidateConfidence.score_gap_top_vs_second.toFixed(2)
+                              : "—"
+                          }
+                          hint="Katta bo‘lsa, tanlov aniqroq"
+                        />
+                      </div>
+                    )}
+
+                    {alternativeCandidates.length > 0 ? (
+                      <div className="table-wrap" style={{ marginTop: 12 }}>
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>product_code</th>
+                              <th>Nomi</th>
+                              <th>Kategoriya</th>
+                              <th>Score</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {alternativeCandidates.map((c) => (
+                              <tr key={c.product_code}>
+                                <td>
+                                  <code>{c.product_code}</code>
+                                </td>
+                                <td>{c.name || "—"}</td>
+                                <td>{c.category_name || "—"}</td>
+                                <td>
+                                  {typeof c.score === "number" ? c.score.toFixed(2) : String(c.score ?? "—")}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <p className="muted">Alternative candidate topilmadi</p>
+                    )}
+                  </Card>
+                )}
+
                 <Card className="full">
                   <SectionTitle
                     icon={<FileText size={22} />}
@@ -1486,6 +1631,112 @@ export default function App() {
                         </tbody>
                       </table>
                     </div>
+                  </Card>
+                )}
+
+                {(auditFlags.participantsOne.length > 0 || auditFlags.bigStartDealDelta.length > 0) && (
+                  <Card className="warning-card full">
+                    <SectionTitle
+                      icon={<ShieldAlert size={22} />}
+                      title="Audit: Red flags"
+                      subtitle="Bu xulosa emas — tekshiruv uchun signal (evidence asosida)"
+                    />
+
+                    <div className="stats-grid">
+                      <StatCard
+                        label="Qatnashchi = 1"
+                        value={auditFlags.participantsOne.length}
+                        hint="participants_count = 1 bo‘lgan bitimlar"
+                      />
+                      <StatCard
+                        label="Start→Deal farqi katta"
+                        value={auditFlags.bigStartDealDelta.length}
+                        hint={`|farq| ≥ ${auditFlags.deltaThresholdPct}%`}
+                      />
+                      <StatCard
+                        label="Eslatma"
+                        value="Qo‘lda tekshiring"
+                        hint="Tender konteksti muhim"
+                      />
+                    </div>
+
+                    {auditFlags.participantsOne.length > 0 && (
+                      <>
+                        <h3 style={{ marginTop: 16 }}>Qatnashchi = 1 bo‘lgan bitimlar</h3>
+                        <div className="table-wrap">
+                          <table>
+                            <thead>
+                              <tr>
+                                <th>Manba</th>
+                                <th>Lot</th>
+                                <th>Mahsulot</th>
+                                <th>Narx</th>
+                                <th>Link</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {auditFlags.participantsOne.slice(0, 10).map((ev, idx) => (
+                                <tr key={`${ev?.source_name}-${ev?.lot_display_no}-${idx}`}>
+                                  <td>{ev?.source_name || "—"}</td>
+                                  <td>{ev?.lot_display_no || "—"}</td>
+                                  <td>{ev?.product_name || ev?.category_name || "—"}</td>
+                                  <td>{isFiniteNumber(ev?.deal_cost) ? formatMoney(ev.deal_cost) : "—"}</td>
+                                  <td>
+                                    {ev?.source_url ? (
+                                      <a href={ev.source_url} target="_blank" rel="noreferrer">
+                                        Ochish
+                                      </a>
+                                    ) : (
+                                      "—"
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
+                    )}
+
+                    {auditFlags.bigStartDealDelta.length > 0 && (
+                      <>
+                        <h3 style={{ marginTop: 16 }}>Boshlang‘ich narx va bitim narxi farqi</h3>
+                        <div className="table-wrap">
+                          <table>
+                            <thead>
+                              <tr>
+                                <th>Manba</th>
+                                <th>Lot</th>
+                                <th>Boshlang‘ich</th>
+                                <th>Bitim</th>
+                                <th>Farq</th>
+                                <th>Link</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {auditFlags.bigStartDealDelta.slice(0, 10).map(({ ev, pct }, idx) => (
+                                <tr key={`${ev?.source_name}-${ev?.lot_display_no}-${idx}`}>
+                                  <td>{ev?.source_name || "—"}</td>
+                                  <td>{ev?.lot_display_no || "—"}</td>
+                                  <td>{formatMoney(ev?.start_cost)}</td>
+                                  <td>{formatMoney(ev?.deal_cost)}</td>
+                                  <td>{typeof pct === "number" ? `${pct.toFixed(1)}%` : "—"}</td>
+                                  <td>
+                                    {ev?.source_url ? (
+                                      <a href={ev.source_url} target="_blank" rel="noreferrer">
+                                        Ochish
+                                      </a>
+                                    ) : (
+                                      "—"
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
+                    )}
                   </Card>
                 )}
 

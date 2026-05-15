@@ -258,6 +258,13 @@ input:focus,
   height: 16px;
 }
 
+.source-presets {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
 .status-badge {
   width: fit-content;
   padding: 6px 10px;
@@ -583,6 +590,32 @@ td {
 .file-label {
   font-weight: 900;
   color: #475569;
+}
+
+.file-name {
+  font-size: 12px;
+  font-weight: 800;
+  color: #334155;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-open {
+  color: #1d4ed8;
+  font-weight: 900;
+  font-size: 12px;
+  text-decoration: none;
+  border: 1px solid #cfe0ff;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #ffffff;
+}
+
+.file-open:hover {
+  border-color: #1d4ed8;
+  text-decoration: none;
 }
 
 .badge {

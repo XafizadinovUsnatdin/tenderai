@@ -239,6 +239,45 @@ async def generate_technical_task(request: GenerateRequest):
             else None
         )
 
+        candidates_json = [
+            {
+                "product_code": c.product_code,
+                "name": c.name,
+                "category_id": c.category_id,
+                "category_name": c.category_name,
+                "score": c.score,
+            }
+            for c in (candidates or [])[:20]
+        ]
+
+        candidate_confidence = None
+        if candidates_json:
+            selected_code = selected_product_dict.get("product_code") if selected_product_dict else None
+            selected_rank = None
+            selected_score = None
+            for idx, c in enumerate(candidates_json, start=1):
+                if selected_code and c.get("product_code") == selected_code:
+                    selected_rank = idx
+                    selected_score = c.get("score")
+                    break
+
+            top_score = candidates_json[0].get("score")
+            second_score = candidates_json[1].get("score") if len(candidates_json) > 1 else None
+            gap = (
+                float(top_score) - float(second_score)
+                if isinstance(top_score, (int, float)) and isinstance(second_score, (int, float))
+                else None
+            )
+
+            candidate_confidence = {
+                "candidate_count": len(candidates_json),
+                "selected_rank": selected_rank,
+                "selected_score": selected_score,
+                "top_score": top_score,
+                "second_score": second_score,
+                "score_gap_top_vs_second": gap,
+            }
+
         def evidence_to_dict(ev):
             return {
                 "source_name": ev.source_name,
@@ -323,6 +362,8 @@ async def generate_technical_task(request: GenerateRequest):
             "search_plan": search_plan,
             "candidate_selection_reason": getattr(selected, "selection_reason", None) if selected else None,
             "selected_product": selected_product_dict,
+            "candidates": candidates_json,
+            "candidate_confidence": candidate_confidence,
             "source_status": source_status,
             "price_analysis": price_analysis,
             "evidences": evidences_json,
