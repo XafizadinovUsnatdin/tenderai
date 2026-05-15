@@ -27,8 +27,6 @@ function getDefaultEvidenceFilters() {
     minDealCost: "",
     maxDealCost: "",
     sortBy: "date_desc",
-    onlyPriceEligible: false,
-    onlyWithFiles: false,
   };
 }
 
@@ -201,8 +199,6 @@ function applyEvidenceFilters(evidences, filters) {
   const providerQ = normalizeText(filters?.providerText);
   const region = filters?.region || "all";
   const status = filters?.status || "all";
-  const onlyPriceEligible = Boolean(filters?.onlyPriceEligible);
-  const onlyWithFiles = Boolean(filters?.onlyWithFiles);
 
   const from = parseDateInput(filters?.dateFrom);
   const to = parseDateInput(filters?.dateTo);
@@ -219,18 +215,6 @@ function applyEvidenceFilters(evidences, filters) {
 
     if (region !== "all" && (ev?.region || "") !== region) return false;
     if (status !== "all" && (ev?.deal_status_name || "") !== status) return false;
-
-    if (onlyPriceEligible && !isFiniteNumber(ev?.unit_price)) return false;
-
-    if (onlyWithFiles) {
-      const hasFiles = Boolean(
-        ev?.contract_file_name ||
-          ev?.contract_file_path ||
-          ev?.additional_protocol_file_name ||
-          ev?.additional_protocol_file_path
-      );
-      if (!hasFiles) return false;
-    }
 
     const d = parseDateSafe(ev?.deal_date);
     if (from && (!d || d < from)) return false;
@@ -422,32 +406,77 @@ function buildGroupedPriceStats(evidences, keyFn) {
   return rows.sort((a, b) => b.count - a.count);
 }
 
-function extractTechnicalHighlights(evidences, limit = 12) {
-  const text = (evidences || []).map((ev) => ev?.condition || "").join("\n");
-  const highlights = [];
+function extractTechnicalHighlights(evidences, limit = 20) {
+  const text = (evidences || [])
+    .map((ev) => ev?.condition || "")
+    .filter(Boolean)
+    .join("\n");
 
-  function add(token) {
-    const clean = String(token || "").trim();
+  const counts = new Map();
+
+  function add(token, weight = 1) {
+    const clean = String(token || "").replace(/\s+/g, " ").trim();
     if (!clean) return;
-    if (highlights.includes(clean)) return;
-    highlights.push(clean);
+    counts.set(clean, (counts.get(clean) || 0) + weight);
   }
 
+  // Network / switch patterns
   for (const match of text.matchAll(/\b(\d{1,2})\s*(?:port|ports|порт|порта)\b/gi)) {
     add(`${match[1]} port`);
   }
-
-  if (/\bRJ-?45\b/i.test(text)) add("RJ45");
-  if (/\bPoE\b/i.test(text)) add("PoE");
-  if (/\bSFP\+?\b/i.test(text)) add("SFP");
-  if (/\b(10\s*\/\s*100\s*\/\s*1000)\b/i.test(text)) add("10/100/1000 Mbps");
-  if (/\b(10\s*\/\s*100)\b/i.test(text)) add("10/100 Mbps");
-  if (/\b(gigabit|гигабит)\b/i.test(text)) add("Gigabit");
+  if (/\bRJ-?45\b/i.test(text)) add("RJ45", 3);
+  if (/\bPoE\+?\b/i.test(text)) add("PoE", 3);
+  if (/\bSFP\+?\b/i.test(text)) add("SFP", 2);
+  if (/\b(10\s*\/\s*100\s*\/\s*1000)\b/i.test(text)) add("10/100/1000 Mbps", 3);
+  if (/\b(10\s*\/\s*100)\b/i.test(text)) add("10/100 Mbps", 2);
+  if (/\b(gigabit|гигабит)\b/i.test(text)) add("Gigabit", 2);
+  if (/\b(ethernet|ethernet\+?)\b/i.test(text)) add("Ethernet");
   if (/\bplug\s*and\s*play\b/i.test(text)) add("Plug and Play");
-  if (/\b(metall|металл)\b/i.test(text)) add("Metall korpus");
-  if (/\b(kafolat|kafolati|garant|гарант)\b/i.test(text)) add("Kafolat");
 
-  return highlights.slice(0, limit);
+  // Common IT terms
+  if (/\bwi-?fi\b/i.test(text) || /\bwifi\b/i.test(text)) add("Wi-Fi", 3);
+  if (/\bbluetooth\b/i.test(text)) add("Bluetooth");
+  if (/\bUSB\b/i.test(text)) add("USB");
+  if (/\bHDMI\b/i.test(text)) add("HDMI");
+  if (/\bVGA\b/i.test(text)) add("VGA");
+  if (/\bdisplayport\b/i.test(text)) add("DisplayPort");
+
+  // Paper / printer patterns
+  if (/\bA4\b/i.test(text)) add("A4");
+  if (/\bA3\b/i.test(text)) add("A3");
+  for (const match of text.matchAll(/\b(\d{3,4})\s*dpi\b/gi)) {
+    add(`${match[1]} DPI`, 2);
+  }
+  for (const match of text.matchAll(/\b(\d{1,3})\s*(?:ppm|стр\/мин)\b/gi)) {
+    add(`${match[1]} ppm`);
+  }
+
+  // Monitor patterns
+  for (const match of text.matchAll(/\b(\d{3,4})\s*[xх]\s*(\d{3,4})\b/g)) {
+    add(`${match[1]}x${match[2]}`, 2);
+  }
+  for (const match of text.matchAll(/\b(\d{1,2}(?:\.\d)?)\s*(?:\"|inch|дюйм)\b/gi)) {
+    add(`${match[1]}\"`, 2);
+  }
+  for (const match of text.matchAll(/\b(\d{2,3})\s*hz\b/gi)) {
+    add(`${match[1]} Hz`, 2);
+  }
+
+  // Generic numeric units
+  for (const match of text.matchAll(/\b(\d{1,4})\s*(gb|tb)\b/gi)) {
+    add(`${match[1]} ${match[2].toUpperCase()}`);
+  }
+  for (const match of text.matchAll(/\b(\d{1,4})\s*(?:w|вт)\b/gi)) {
+    add(`${match[1]} W`);
+  }
+
+  if (/\b(metall|металл)\b/i.test(text)) add("Metall korpus");
+  if (/\b(kafolat|kafolati|garant|гарант)\b/i.test(text)) add("Kafolat", 2);
+
+  return Array.from(counts.entries())
+    .sort((a, b) => (b[1] - a[1]) || a[0].localeCompare(b[0]))
+    .map(([token]) => token)
+    .slice(0, limit);
 }
 
 function Tabs({ value, onChange, items }) {
@@ -717,28 +746,6 @@ function EvidenceFilters({ value, onChange, options, totalCount, filteredCount, 
             <option value="deal_cost_asc">Bitim narxi (past → yuqori)</option>
           </select>
         </div>
-
-        <div className="filter-group checks">
-          <label>Qo‘shimcha</label>
-          <div className="check-row">
-            <label className="mini-check">
-              <input
-                type="checkbox"
-                checked={value.onlyPriceEligible}
-                onChange={(e) => onChange({ ...value, onlyPriceEligible: e.target.checked })}
-              />
-              <span>Faqat unit_price bor</span>
-            </label>
-            <label className="mini-check">
-              <input
-                type="checkbox"
-                checked={value.onlyWithFiles}
-                onChange={(e) => onChange({ ...value, onlyWithFiles: e.target.checked })}
-              />
-              <span>Faqat hujjatli</span>
-            </label>
-          </div>
-        </div>
       </div>
     </div>
   );
@@ -746,48 +753,67 @@ function EvidenceFilters({ value, onChange, options, totalCount, filteredCount, 
 
 function EvidenceTable({ evidences }) {
   const rows = evidences || [];
+  const [viewer, setViewer] = useState(null);
 
   if (rows.length === 0) {
     return <p className="muted">Evidence topilmadi</p>;
   }
 
   return (
-    <div className="table-wrap">
-      <table className="evidence-table">
-        <thead>
-          <tr>
-            <th>Manba</th>
-            <th>Lot</th>
-            <th>Mahsulot / Kategoriya</th>
-            <th>Sana</th>
-            <th>Buyurtmachi</th>
-            <th>Yetkazib beruvchi</th>
-            <th>Ishtirokchi</th>
-            <th>Bitim narxi</th>
-            <th>Unit narx</th>
-            <th>Hujjatlar</th>
-            <th>Status</th>
-            <th>Link</th>
-            <th>Tavsif</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((ev, index) => {
+    <>
+      {viewer?.text && (
+        <div className="modal-overlay" role="dialog" aria-modal="true" onClick={() => setViewer(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <div className="modal-title">{viewer?.title || "Tavsif"}</div>
+                {viewer?.subtitle && <div className="modal-subtitle">{viewer.subtitle}</div>}
+              </div>
+              <button type="button" className="modal-close" onClick={() => setViewer(null)}>
+                Yopish
+              </button>
+            </div>
+            <pre className="modal-pre">{viewer.text}</pre>
+          </div>
+        </div>
+      )}
+
+      <div className="table-wrap">
+        <table className="evidence-table">
+          <thead>
+            <tr>
+              <th>Manba</th>
+              <th>Lot</th>
+              <th>Mahsulot / Kategoriya</th>
+              <th>Sana</th>
+              <th>Buyurtmachi</th>
+              <th>Yetkazib beruvchi</th>
+              <th>Ishtirokchi</th>
+              <th>Bitim narxi</th>
+              <th>Narx</th>
+              <th>Hujjatlar</th>
+              <th>Status</th>
+              <th>Link</th>
+              <th>Tavsif</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((ev, index) => {
             const name = ev?.product_name || ev?.category_name || "—";
             const dealCostText = isFiniteNumber(ev?.deal_cost) ? formatMoney(ev.deal_cost) : "—";
             const unitPriceText = isFiniteNumber(ev?.unit_price) ? formatMoney(ev.unit_price) : "—";
+            const displayPriceText =
+              isFiniteNumber(ev?.unit_price) ? unitPriceText : isFiniteNumber(ev?.deal_cost) ? dealCostText : "—";
             const participantsText =
               ev?.participants_count === null || ev?.participants_count === undefined
                 ? "—"
                 : String(ev.participants_count);
 
-            const isEtender = ev?.source_name === "etender.uzex.uz";
-
             const contractHref = buildFileUrl(ev?.source_name, ev?.contract_file_path);
             const protocolHref = buildFileUrl(ev?.source_name, ev?.additional_protocol_file_path);
 
-            return (
-              <tr key={index}>
+              return (
+                <tr key={index}>
                 <td>
                   <div className="source-cell">
                     <span>{ev?.source_name || "—"}</span>
@@ -810,13 +836,13 @@ function EvidenceTable({ evidences }) {
                 <td>{dealCostText}</td>
                 <td>
                   <div className="price-cell">
-                    <div>{unitPriceText}</div>
-                    {isEtender && !isFiniteNumber(ev?.unit_price) && (
-                      <div className="badge muted">Unit narx yo‘q (quantity yo‘q)</div>
-                    )}
-                    {!isEtender && isFiniteNumber(ev?.unit_price) && (
-                      <div className="muted tiny" title="unit_price = deal_cost / amount (xarid.uzex.uz)">
-                        deal/amount
+                    <div>{displayPriceText}</div>
+                    {!isFiniteNumber(ev?.unit_price) && isFiniteNumber(ev?.deal_cost) && (
+                      <div
+                        className="badge muted"
+                        title="Bu qiymat unit_price emas. Per-unit narx tahliliga kiritilmaydi."
+                      >
+                        Umumiy narx
                       </div>
                     )}
                   </div>
@@ -871,20 +897,30 @@ function EvidenceTable({ evidences }) {
                 </td>
                 <td className="desc-cell">
                   {ev?.condition ? (
-                    <details>
-                      <summary>Ko‘rish</summary>
-                      <pre className="pre">{ev.condition}</pre>
-                    </details>
+                    <button
+                      type="button"
+                      className="desc-btn"
+                      onClick={() =>
+                        setViewer({
+                          title: `${ev?.lot_display_no || "Lot"} · ${ev?.source_name || "manba"}`,
+                          subtitle: ev?.product_name || ev?.category_name || null,
+                          text: ev.condition,
+                        })
+                      }
+                    >
+                      Ko‘rish
+                    </button>
                   ) : (
                     "—"
                   )}
                 </td>
               </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
 
@@ -1119,6 +1155,10 @@ export default function App() {
     const params = result?.technical_task?.recommended_specification?.["Texnik talablar"];
     return Array.isArray(params) ? params.filter(Boolean).slice(0, 20) : [];
   }, [result]);
+  const technicalChips = useMemo(() => {
+    const merged = [...technicalParams, ...technicalHighlights].map((t) => String(t || "").trim()).filter(Boolean);
+    return Array.from(new Set(merged)).slice(0, 28);
+  }, [technicalParams, technicalHighlights]);
 
   const tabItems = useMemo(() => {
     const count = evidences.length;
@@ -1183,7 +1223,7 @@ export default function App() {
       <div className="hero">
         <div className="hero-badge">
           <Database size={16} />
-          Multi-source (xarid + etender) AI generator
+          TenderAI
         </div>
 
         <h1>AI yordamida xarid texnik topshirig‘i</h1>
@@ -1451,7 +1491,7 @@ export default function App() {
                   <SectionTitle
                     icon={<ShieldAlert size={22} />}
                     title="Shubhali past narxlar"
-                    subtitle="O‘rtacha narxdan 30% yoki undan ko‘proq past bo‘lgan holatlar"
+                    subtitle="O‘rtacha narxdan past bo‘lgan holatlar (foiz bilan)"
                   />
 
                   <div className="table-wrap">
@@ -1523,9 +1563,9 @@ export default function App() {
                   title="Texnik parametrlar summary"
                   subtitle="Evidence tavsiflaridan ajratilgan ko‘p uchragan talablar"
                 />
-                {(technicalParams.length > 0 || technicalHighlights.length > 0) ? (
+                {technicalChips.length > 0 ? (
                   <div className="chips">
-                    {(technicalParams.length > 0 ? technicalParams : technicalHighlights).map((t) => (
+                    {technicalChips.map((t) => (
                       <span key={t}>{t}</span>
                     ))}
                   </div>

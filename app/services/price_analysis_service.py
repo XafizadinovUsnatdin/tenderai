@@ -31,6 +31,9 @@ class PriceAnalysisService:
 
         for ev in eligible:
             if ev.unit_price <= avg_price * 0.7:
+                pct = 0.0
+                if avg_price > 0:
+                    pct = (avg_price - float(ev.unit_price)) / avg_price * 100.0
                 suspicious.append(
                     {
                         "source_name": ev.source_name,
@@ -39,7 +42,7 @@ class PriceAnalysisService:
                         "product_name": ev.product_name,
                         "unit_price": round(ev.unit_price, 2),
                         "avg_price": round(avg_price, 2),
-                        "reason": "Bitta dona narxi o‘rtacha narxdan 30% yoki undan ko‘proq past",
+                        "reason": f"O‘rtacha narxdan {round(pct, 1)}% past",
                     }
                 )
 

@@ -611,26 +611,91 @@ td {
   text-decoration: underline;
 }
 
-.desc-cell details summary {
-  cursor: pointer;
-  font-weight: 900;
+.desc-btn {
+  height: 30px;
+  border: 1px solid #cfe0ff;
+  background: #ffffff;
   color: #1d4ed8;
+  border-radius: 999px;
+  padding: 0 12px;
+  font-weight: 900;
+  font-size: 12px;
+  cursor: pointer;
 }
 
-.desc-cell details[open] summary {
-  margin-bottom: 10px;
+.desc-btn:hover {
+  border-color: #1d4ed8;
 }
 
-.pre {
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  z-index: 60;
+}
+
+.modal-card {
+  width: min(980px, 100%);
+  max-height: 78vh;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid #e4e9f2;
+  border-radius: 20px;
+  box-shadow: 0 30px 80px rgba(15, 23, 42, 0.35);
+  padding: 16px;
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.modal-title {
+  font-weight: 1000;
+  font-size: 15px;
+  color: #0f172a;
+  margin-bottom: 2px;
+}
+
+.modal-subtitle {
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 800;
+}
+
+.modal-close {
+  height: 32px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #0f172a;
+  border-radius: 12px;
+  padding: 0 12px;
+  font-weight: 900;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.modal-close:hover {
+  border-color: #cfe0ff;
+}
+
+.modal-pre {
   white-space: pre-wrap;
   margin: 0;
-  font-size: 12px;
-  line-height: 1.55;
+  font-size: 13px;
+  line-height: 1.65;
   background: #0b1220;
   color: #e2e8f0;
   border-radius: 14px;
-  padding: 12px;
-  max-height: 260px;
+  padding: 14px;
+  max-height: calc(78vh - 84px);
   overflow: auto;
 }
 
