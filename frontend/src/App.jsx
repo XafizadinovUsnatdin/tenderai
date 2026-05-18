@@ -22,27 +22,8 @@ function getDefaultEvidenceFilters() {
     providerText: "",
     dateFrom: "",
     dateTo: "",
-    minUnitPrice: "",
-    maxUnitPrice: "",
-    minDealCost: "",
-    maxDealCost: "",
     sortBy: "date_desc",
   };
-}
-
-function formatMoney(value) {
-  if (value === null || value === undefined) return "—";
-  return new Intl.NumberFormat("uz-UZ").format(value) + " so‘m";
-}
-
-function formatMoneyCompact(value) {
-  if (!isFiniteNumber(value)) return "—";
-  const abs = Math.abs(value);
-  const sign = value < 0 ? "-" : "";
-  if (abs >= 1_000_000_000_000) return `${sign}${(abs / 1_000_000_000_000).toFixed(1)} trln so‘m`;
-  if (abs >= 1_000_000_000) return `${sign}${(abs / 1_000_000_000).toFixed(1)} mlrd so‘m`;
-  if (abs >= 1_000_000) return `${sign}${(abs / 1_000_000).toFixed(1)} mln so‘m`;
-  return formatMoney(value);
 }
 
 function downloadJson(data, filename = "tenderai_result.json") {
@@ -75,8 +56,6 @@ function downloadCsv(rows, filename = "tenderai_evidences.csv") {
     "provider_name",
     "provider_inn",
     "participants_count",
-    "deal_cost",
-    "unit_price",
     "currency",
     "deal_status_name",
     "payment_status",
@@ -111,19 +90,6 @@ function downloadCsv(rows, filename = "tenderai_evidences.csv") {
   a.click();
 
   URL.revokeObjectURL(url);
-}
-
-function getPriceGlobal(result) {
-  const pa = result?.price_analysis;
-  if (!pa) return null;
-  if (pa.global) return pa.global;
-  return pa;
-}
-
-function getPriceBySource(result) {
-  const pa = result?.price_analysis;
-  if (!pa) return null;
-  return pa.by_source || null;
 }
 
 function isFiniteNumber(value) {
@@ -234,36 +200,6 @@ function applyEvidenceFilters(evidences, filters) {
       if (!d || d > toEnd) return false;
     }
 
-    const minUnit = filters?.minUnitPrice;
-    const maxUnit = filters?.maxUnitPrice;
-    if (minUnit !== "" && minUnit !== null && minUnit !== undefined) {
-      const n = Number(minUnit);
-      if (Number.isFinite(n)) {
-        if (!isFiniteNumber(ev?.unit_price) || ev.unit_price < n) return false;
-      }
-    }
-    if (maxUnit !== "" && maxUnit !== null && maxUnit !== undefined) {
-      const n = Number(maxUnit);
-      if (Number.isFinite(n)) {
-        if (!isFiniteNumber(ev?.unit_price) || ev.unit_price > n) return false;
-      }
-    }
-
-    const minDeal = filters?.minDealCost;
-    const maxDeal = filters?.maxDealCost;
-    if (minDeal !== "" && minDeal !== null && minDeal !== undefined) {
-      const n = Number(minDeal);
-      if (Number.isFinite(n)) {
-        if (!isFiniteNumber(ev?.deal_cost) || ev.deal_cost < n) return false;
-      }
-    }
-    if (maxDeal !== "" && maxDeal !== null && maxDeal !== undefined) {
-      const n = Number(maxDeal);
-      if (Number.isFinite(n)) {
-        if (!isFiniteNumber(ev?.deal_cost) || ev.deal_cost > n) return false;
-      }
-    }
-
     return true;
   });
 
@@ -279,46 +215,10 @@ function sortEvidences(evidences, sortBy) {
     return d ? d.getTime() : 0;
   }
 
-  function numOrNull(v) {
-    return isFiniteNumber(v) ? v : null;
-  }
-
   const cmp = (a, b) => {
     switch (sortBy) {
       case "date_asc":
         return t(a) - t(b);
-      case "unit_price_desc": {
-        const av = numOrNull(a?.unit_price);
-        const bv = numOrNull(b?.unit_price);
-        if (av === null && bv === null) return t(b) - t(a);
-        if (av === null) return 1;
-        if (bv === null) return -1;
-        return bv - av;
-      }
-      case "unit_price_asc": {
-        const av = numOrNull(a?.unit_price);
-        const bv = numOrNull(b?.unit_price);
-        if (av === null && bv === null) return t(b) - t(a);
-        if (av === null) return 1;
-        if (bv === null) return -1;
-        return av - bv;
-      }
-      case "deal_cost_desc": {
-        const av = numOrNull(a?.deal_cost);
-        const bv = numOrNull(b?.deal_cost);
-        if (av === null && bv === null) return t(b) - t(a);
-        if (av === null) return 1;
-        if (bv === null) return -1;
-        return bv - av;
-      }
-      case "deal_cost_asc": {
-        const av = numOrNull(a?.deal_cost);
-        const bv = numOrNull(b?.deal_cost);
-        if (av === null && bv === null) return t(b) - t(a);
-        if (av === null) return 1;
-        if (bv === null) return -1;
-        return av - bv;
-      }
       default:
         return t(b) - t(a);
     }
@@ -333,87 +233,6 @@ function formatDate(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return String(value);
   return date.toLocaleDateString("uz-UZ");
-}
-
-function monthKey(value) {
-  if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  return `${y}-${m}`;
-}
-
-function median(values) {
-  if (!values?.length) return null;
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  if (sorted.length % 2) return sorted[mid];
-  return (sorted[mid - 1] + sorted[mid]) / 2;
-}
-
-function buildMonthlyPriceSeries(evidences) {
-  const byMonth = new Map();
-
-  for (const ev of evidences || []) {
-    if (!isFiniteNumber(ev?.unit_price)) continue;
-    const key = monthKey(ev?.deal_date);
-    if (!key) continue;
-
-    const list = byMonth.get(key) || [];
-    list.push(ev.unit_price);
-    byMonth.set(key, list);
-  }
-
-  const result = [];
-
-  for (const [month, prices] of byMonth.entries()) {
-    const sorted = [...prices].sort((a, b) => a - b);
-    const avg = sorted.reduce((sum, v) => sum + v, 0) / sorted.length;
-
-    result.push({
-      month,
-      count: sorted.length,
-      min: sorted[0],
-      max: sorted[sorted.length - 1],
-      avg,
-      median: median(sorted),
-    });
-  }
-
-  return result.sort((a, b) => a.month.localeCompare(b.month));
-}
-
-function buildGroupedPriceStats(evidences, keyFn) {
-  const grouped = new Map();
-
-  for (const ev of evidences || []) {
-    if (!isFiniteNumber(ev?.unit_price)) continue;
-    const key = keyFn(ev);
-    if (!key) continue;
-
-    const list = grouped.get(key) || [];
-    list.push(ev.unit_price);
-    grouped.set(key, list);
-  }
-
-  const rows = [];
-
-  for (const [key, prices] of grouped.entries()) {
-    const sorted = [...prices].sort((a, b) => a - b);
-    const avg = sorted.reduce((sum, v) => sum + v, 0) / sorted.length;
-
-    rows.push({
-      key,
-      count: sorted.length,
-      avg,
-      median: median(sorted),
-      min: sorted[0],
-      max: sorted[sorted.length - 1],
-    });
-  }
-
-  return rows.sort((a, b) => b.count - a.count);
 }
 
 const SUCCESS_STATUS_HINTS = [
@@ -469,10 +288,9 @@ function computeSupplierRiskLabel(stats) {
   if (total <= 0) return "—";
 
   const riskyRate = stats.risky_deals / total;
-  const overpricedRate = stats.price_deals > 0 ? stats.overpriced_deals / stats.price_deals : 0;
   const singleBidderRate = stats.total_deals > 0 ? stats.single_bidder_deals / stats.total_deals : 0;
 
-  const riskScore = riskyRate * 60 + overpricedRate * 30 + singleBidderRate * 10;
+  const riskScore = riskyRate * 75 + singleBidderRate * 25;
 
   if (riskScore >= 35) return "Yuqori";
   if (riskScore >= 15) return "O‘rta";
@@ -486,20 +304,15 @@ function computeSupplierRating(stats) {
   const successRate = stats.success_deals / total;
   const riskyRate = stats.risky_deals / total;
   const unknownRate = stats.unknown_deals / total;
-
-  const priceDeals = stats.price_deals || 0;
-  const overpricedRate = priceDeals > 0 ? stats.overpriced_deals / priceDeals : null;
+  const singleBidderRate = stats.total_deals > 0 ? stats.single_bidder_deals / stats.total_deals : 0;
 
   let score = 0;
 
   // Success vs risk
-  score += successRate * 45;
+  score += successRate * 50;
   score += (1 - riskyRate) * 25;
   score += (1 - unknownRate) * 10;
-
-  // Price fairness (if we have unit_price deals)
-  if (overpricedRate !== null) score += (1 - overpricedRate) * 15;
-  else score += 7.5; // neutral if unknown
+  score += (1 - singleBidderRate) * 10;
 
   // Experience bonus
   score += Math.min(5, Math.log10(total + 1) * 5);
@@ -507,11 +320,8 @@ function computeSupplierRating(stats) {
   return Math.max(0, Math.min(100, Math.round(score)));
 }
 
-function buildSupplierPerformance(evidences, priceGlobal) {
+function buildSupplierPerformance(evidences) {
   const list = Array.isArray(evidences) ? evidences : [];
-
-  const recMin = isFiniteNumber(priceGlobal?.recommended_min_price) ? priceGlobal.recommended_min_price : null;
-  const recMax = isFiniteNumber(priceGlobal?.recommended_max_price) ? priceGlobal.recommended_max_price : null;
 
   const grouped = new Map();
 
@@ -530,14 +340,8 @@ function buildSupplierPerformance(evidences, priceGlobal) {
         success_deals: 0,
         risky_deals: 0,
         unknown_deals: 0,
-        total_sum: 0,
-        total_sum_known: 0,
         unit_sum: 0,
         unit_sum_known: 0,
-        price_deals: 0,
-        overpriced_deals: 0,
-        underpriced_deals: 0,
-        inrange_deals: 0,
         single_bidder_deals: 0,
         last_date: null,
         regions: new Set(),
@@ -553,11 +357,6 @@ function buildSupplierPerformance(evidences, priceGlobal) {
     else if (outcome === "risky") item.risky_deals += 1;
     else item.unknown_deals += 1;
 
-    if (isFiniteNumber(ev?.deal_cost)) {
-      item.total_sum += ev.deal_cost;
-      item.total_sum_known += 1;
-    }
-
     if (isFiniteNumber(ev?.amount)) {
       item.unit_sum += ev.amount;
       item.unit_sum_known += 1;
@@ -569,15 +368,6 @@ function buildSupplierPerformance(evidences, priceGlobal) {
     if (category) item.categories.set(category, (item.categories.get(category) || 0) + 1);
 
     if (Number(ev?.participants_count) === 1) item.single_bidder_deals += 1;
-
-    if (isFiniteNumber(ev?.unit_price)) {
-      item.price_deals += 1;
-      if (recMin !== null && recMax !== null) {
-        if (ev.unit_price < recMin) item.underpriced_deals += 1;
-        else if (ev.unit_price > recMax) item.overpriced_deals += 1;
-        else item.inrange_deals += 1;
-      }
-    }
 
     const date = parseDateSafe(ev?.deal_date);
     if (date) {
@@ -714,110 +504,6 @@ function Tabs({ value, onChange, items }) {
   );
 }
 
-function LineChart({ data, series }) {
-  const width = 720;
-  const height = 260;
-  const paddingX = 44;
-  const paddingY = 26;
-
-  const allValues = [];
-  for (const row of data) {
-    for (const s of series) {
-      if (isFiniteNumber(row?.[s.key])) allValues.push(row[s.key]);
-    }
-  }
-
-  if (!data?.length || allValues.length === 0) {
-    return <p className="muted">Grafik uchun ma’lumot yetarli emas</p>;
-  }
-
-  let minVal = Math.min(...allValues);
-  let maxVal = Math.max(...allValues);
-
-  if (minVal === maxVal) {
-    minVal = minVal * 0.9;
-    maxVal = maxVal * 1.1;
-  }
-
-  const plotW = width - paddingX * 2;
-  const plotH = height - paddingY * 2;
-  const xStep = data.length > 1 ? plotW / (data.length - 1) : 0;
-
-  const x = (idx) => paddingX + idx * xStep;
-  const y = (v) => paddingY + (1 - (v - minVal) / (maxVal - minVal)) * plotH;
-
-  const gridLines = 4;
-  const grid = [];
-  for (let i = 0; i <= gridLines; i++) {
-    const yy = paddingY + (i / gridLines) * plotH;
-    grid.push(yy);
-  }
-
-  function buildPath(key) {
-    const pts = data
-      .map((row, idx) => {
-        const v = row?.[key];
-        if (!isFiniteNumber(v)) return null;
-        return { idx, v };
-      })
-      .filter(Boolean);
-
-    if (pts.length === 0) return "";
-
-    return pts
-      .map((p, i) => `${i === 0 ? "M" : "L"} ${x(p.idx).toFixed(2)} ${y(p.v).toFixed(2)}`)
-      .join(" ");
-  }
-
-  const first = data[0]?.month;
-  const last = data[data.length - 1]?.month;
-
-  return (
-    <div className="chart">
-      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Narx trend grafigi">
-        {grid.map((yy) => (
-          <line
-            key={yy}
-            x1={paddingX}
-            x2={width - paddingX}
-            y1={yy}
-            y2={yy}
-            stroke="rgba(148,163,184,0.35)"
-            strokeWidth="1"
-          />
-        ))}
-
-        {series.map((s) => (
-          <path
-            key={s.key}
-            d={buildPath(s.key)}
-            fill="none"
-            stroke={s.color}
-            strokeWidth={s.width ?? 2.5}
-            opacity={s.opacity ?? 1}
-          />
-        ))}
-
-        <text x={paddingX} y={height - 8} fontSize="12" fill="#64748b">
-          {first}
-        </text>
-        <text x={width - paddingX} y={height - 8} fontSize="12" fill="#64748b" textAnchor="end">
-          {last}
-        </text>
-      </svg>
-
-      <div className="chart-legend">
-        {series.map((s) => (
-          <div key={s.key} className="legend-item">
-            <span className="legend-dot" style={{ background: s.color }} />
-            <span>{s.label}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function EvidenceFilters({ value, onChange, options, totalCount, filteredCount, onReset, onDownloadCsv }) {
   const regions = options?.regions || [];
   const statuses = options?.statuses || [];
@@ -911,46 +597,6 @@ function EvidenceFilters({ value, onChange, options, totalCount, filteredCount, 
         </div>
 
         <div className="filter-group">
-          <label>Unit narx min</label>
-          <input
-            inputMode="numeric"
-            value={value.minUnitPrice}
-            onChange={(e) => onChange({ ...value, minUnitPrice: e.target.value })}
-            placeholder="masalan 500000"
-          />
-        </div>
-
-        <div className="filter-group">
-          <label>Unit narx max</label>
-          <input
-            inputMode="numeric"
-            value={value.maxUnitPrice}
-            onChange={(e) => onChange({ ...value, maxUnitPrice: e.target.value })}
-            placeholder="masalan 1500000"
-          />
-        </div>
-
-        <div className="filter-group">
-          <label>Bitim narxi min</label>
-          <input
-            inputMode="numeric"
-            value={value.minDealCost}
-            onChange={(e) => onChange({ ...value, minDealCost: e.target.value })}
-            placeholder="masalan 1000000"
-          />
-        </div>
-
-        <div className="filter-group">
-          <label>Bitim narxi max</label>
-          <input
-            inputMode="numeric"
-            value={value.maxDealCost}
-            onChange={(e) => onChange({ ...value, maxDealCost: e.target.value })}
-            placeholder="masalan 8000000"
-          />
-        </div>
-
-        <div className="filter-group">
           <label>Saralash</label>
           <select
             value={value.sortBy}
@@ -958,10 +604,6 @@ function EvidenceFilters({ value, onChange, options, totalCount, filteredCount, 
           >
             <option value="date_desc">Sana (yangi → eski)</option>
             <option value="date_asc">Sana (eski → yangi)</option>
-            <option value="unit_price_desc">Unit narx (yuqori → past)</option>
-            <option value="unit_price_asc">Unit narx (past → yuqori)</option>
-            <option value="deal_cost_desc">Bitim narxi (yuqori → past)</option>
-            <option value="deal_cost_asc">Bitim narxi (past → yuqori)</option>
           </select>
         </div>
       </div>
@@ -971,7 +613,6 @@ function EvidenceFilters({ value, onChange, options, totalCount, filteredCount, 
 
 function EvidenceTable({ evidences }) {
   const rows = evidences || [];
-  const [viewer, setViewer] = useState(null);
 
   if (rows.length === 0) {
     return <p className="muted">Evidence topilmadi</p>;
@@ -979,23 +620,6 @@ function EvidenceTable({ evidences }) {
 
   return (
     <>
-      {viewer?.text && (
-        <div className="modal-overlay" role="dialog" aria-modal="true" onClick={() => setViewer(null)}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <div>
-                <div className="modal-title">{viewer?.title || "Tavsif"}</div>
-                {viewer?.subtitle && <div className="modal-subtitle">{viewer.subtitle}</div>}
-              </div>
-              <button type="button" className="modal-close" onClick={() => setViewer(null)}>
-                Yopish
-              </button>
-            </div>
-            <pre className="modal-pre">{viewer.text}</pre>
-          </div>
-        </div>
-      )}
-
       <div className="table-wrap">
         <table className="evidence-table">
           <thead>
@@ -1007,21 +631,15 @@ function EvidenceTable({ evidences }) {
               <th>Buyurtmachi</th>
               <th>Yetkazib beruvchi</th>
               <th>Ishtirokchi</th>
-              <th>Bitim narxi</th>
-              <th>Narx</th>
               <th>Hujjatlar</th>
               <th>Status</th>
               <th>Link</th>
-              <th>Tavsif</th>
+              <th>Parametrlar</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((ev, index) => {
             const name = ev?.product_name || ev?.category_name || "—";
-            const dealCostText = isFiniteNumber(ev?.deal_cost) ? formatMoney(ev.deal_cost) : "—";
-            const unitPriceText = isFiniteNumber(ev?.unit_price) ? formatMoney(ev.unit_price) : "—";
-            const displayPriceText =
-              isFiniteNumber(ev?.unit_price) ? unitPriceText : isFiniteNumber(ev?.deal_cost) ? dealCostText : "—";
             const participantsText =
               ev?.participants_count === null || ev?.participants_count === undefined
                 ? "—"
@@ -1059,20 +677,6 @@ function EvidenceTable({ evidences }) {
                 <td>{ev?.customer_name || "—"}</td>
                 <td>{ev?.provider_name || "—"}</td>
                 <td>{participantsText}</td>
-                <td>{dealCostText}</td>
-                <td>
-                  <div className="price-cell">
-                    <div>{displayPriceText}</div>
-                    {!isFiniteNumber(ev?.unit_price) && isFiniteNumber(ev?.deal_cost) && (
-                      <div
-                        className="badge muted"
-                        title="Bu qiymat unit_price emas. Per-unit narx tahliliga kiritilmaydi."
-                      >
-                        Umumiy narx
-                      </div>
-                    )}
-                  </div>
-                </td>
                 <td>
                   <div className="files-cell">
                     {(ev?.additional_protocol_file_name || ev?.additional_protocol_file_path) ? (
@@ -1128,23 +732,7 @@ function EvidenceTable({ evidences }) {
                   )}
                 </td>
                 <td className="desc-cell">
-                  {ev?.condition ? (
-                    <button
-                      type="button"
-                      className="desc-btn"
-                      onClick={() =>
-                        setViewer({
-                          title: `${ev?.lot_display_no || "Lot"} · ${ev?.source_name || "manba"}`,
-                          subtitle: ev?.product_name || ev?.category_name || null,
-                          text: ev.condition,
-                        })
-                      }
-                    >
-                      Ko‘rish
-                    </button>
-                  ) : (
-                    "—"
-                  )}
+                  {ev?.condition ? <pre className="param-pre">{ev.condition}</pre> : "—"}
                 </td>
               </tr>
               );
@@ -1261,11 +849,6 @@ function TechnicalTask({ task }) {
       </Card>
 
       <Card>
-        <h3>Narx xulosasi</h3>
-        <ListBlock items={task.price_summary} />
-      </Card>
-
-      <Card>
         <h3>Risk ogohlantirishlari</h3>
         <ListBlock items={task.risk_warnings} />
       </Card>
@@ -1325,8 +908,7 @@ export default function App() {
     const fakeSteps = [
       "Mahsulot turi aniqlanmoqda...",
       "Xarid.uzex katalogidan product_code qidirilmoqda...",
-      "Completed deals olinmoqda...",
-      "Narx tahlili qilinmoqda...",
+      "Tender manbalaridan dalillar yig‘ilmoqda...",
       "Texnik topshiriq generatsiya qilinmoqda...",
     ];
 
@@ -1369,21 +951,14 @@ export default function App() {
     }
   }
 
-  const priceGlobal = getPriceGlobal(result);
-  const priceBySource = getPriceBySource(result);
   const selected = result?.selected_product;
   const candidates = result?.candidates || [];
   const candidateConfidence = result?.candidate_confidence || null;
   const evidences = result?.evidences || [];
 
-  const monthlySeries = useMemo(() => buildMonthlyPriceSeries(evidences), [evidences]);
-  const regionStats = useMemo(
-    () => buildGroupedPriceStats(evidences, (ev) => ev?.region),
-    [evidences]
-  );
   const supplierRows = useMemo(
-    () => buildSupplierPerformance(evidences, priceGlobal),
-    [evidences, priceGlobal]
+    () => buildSupplierPerformance(evidences),
+    [evidences]
   );
   const technicalHighlights = useMemo(() => extractTechnicalHighlights(evidences), [evidences]);
   const technicalParams = useMemo(() => {
@@ -1404,29 +979,16 @@ export default function App() {
   const auditFlags = useMemo(() => {
     const list = Array.isArray(evidences) ? evidences : [];
     const participantsOne = [];
-    const bigStartDealDelta = [];
-    const deltaThresholdPct = 50;
 
     for (const ev of list) {
       const participants = ev?.participants_count;
       if (participants !== null && participants !== undefined && Number(participants) === 1) {
         participantsOne.push(ev);
       }
-
-      if (isFiniteNumber(ev?.start_cost) && isFiniteNumber(ev?.deal_cost) && ev.start_cost > 0) {
-        const pct = ((ev.deal_cost - ev.start_cost) / ev.start_cost) * 100;
-        if (Math.abs(pct) >= deltaThresholdPct) {
-          bigStartDealDelta.push({ ev, pct });
-        }
-      }
     }
 
-    bigStartDealDelta.sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct));
-
     return {
-      deltaThresholdPct,
       participantsOne,
-      bigStartDealDelta,
     };
   }, [evidences]);
 
@@ -1529,15 +1091,6 @@ export default function App() {
                   hint="Bekor/Rad/Jarima va h.k."
                 />
                 <StatCard
-                  label="Umumiy summa"
-                  value={formatMoneyCompact(supplierViewer.total_sum)}
-                  hint={
-                    supplierViewer.total_sum_known === supplierViewer.total_deals
-                      ? `${supplierViewer.total_deals} ta bitim`
-                      : `${supplierViewer.total_sum_known}/${supplierViewer.total_deals} ta bitimda summa bor`
-                  }
-                />
-                <StatCard
                   label="Unit (ma’lum)"
                   value={
                     supplierViewer.unit_sum_known > 0
@@ -1559,13 +1112,9 @@ export default function App() {
                   value={formatDate(supplierViewer.last_date)}
                 />
                 <StatCard
-                  label="Unit narxli bitimlar"
-                  value={`${supplierViewer.price_deals || 0} ta`}
-                  hint={
-                    supplierViewer.price_deals > 0
-                      ? `Mos: ${supplierViewer.inrange_deals || 0}, Qimmat: ${supplierViewer.overpriced_deals || 0}, Juda past: ${supplierViewer.underpriced_deals || 0}`
-                      : "unit_price yo‘q bo‘lishi mumkin"
-                  }
+                  label="Yakka qatnashchi"
+                  value={`${supplierViewer.single_bidder_deals || 0} ta`}
+                  hint="participants_count = 1 bo‘lgan holatlar"
                 />
               </div>
 
@@ -1584,19 +1133,12 @@ export default function App() {
                       <th>Lot</th>
                       <th>Mahsulot</th>
                       <th>Buyurtmachi</th>
-                      <th>Summa</th>
-                      <th>Narx</th>
                       <th>Status</th>
                       <th>Link</th>
                     </tr>
                   </thead>
                   <tbody>
                     {(supplierViewer.deals_sorted || []).slice(0, 50).map((ev, idx) => {
-                      const dealCostText = isFiniteNumber(ev?.deal_cost) ? formatMoney(ev.deal_cost) : "—";
-                      const unitPriceText = isFiniteNumber(ev?.unit_price) ? formatMoney(ev.unit_price) : "—";
-                      const priceText =
-                        isFiniteNumber(ev?.unit_price) ? unitPriceText : isFiniteNumber(ev?.deal_cost) ? dealCostText : "—";
-
                       const outcome = classifyEvidenceOutcome(ev);
                       const outcomeLabel =
                         outcome === "success" ? "Muvaffaqiyatli" : outcome === "risky" ? "Riskli" : "Noma’lum";
@@ -1609,8 +1151,6 @@ export default function App() {
                           <td>{ev?.lot_display_no || "—"}</td>
                           <td>{ev?.product_name || ev?.category_name || "—"}</td>
                           <td>{ev?.customer_name || "—"}</td>
-                          <td>{dealCostText}</td>
-                          <td>{priceText}</td>
                           <td>
                             <div className="status-cell">
                               <div className={badgeClass}>{outcomeLabel}</div>
@@ -1646,8 +1186,8 @@ export default function App() {
         <h1>AI yordamida xarid texnik topshirig‘i</h1>
         <p>
           Mahsulot yoki xizmat nomini kiriting. Tizim xarid.uzex.uz (completed deals)
-          va etender.uzex.uz (deals list) manbalaridan dalillarni yig‘adi, narxni
-          (unit_price bo‘lsa) tahlil qiladi va texnik topshiriq draftini yaratadi.
+          va etender.uzex.uz (deals list) manbalaridan dalillarni yig‘adi va texnik
+          topshiriq draftini yaratadi.
         </p>
       </div>
 
@@ -1737,7 +1277,7 @@ export default function App() {
                   className="secondary-btn small"
                   onClick={() => setEnabledSources(["xarid.uzex.uz", "xarid.uzex.uz/national"])}
                 >
-                  Narx tahlili
+                  Xarid (shop+national)
                 </button>
                 <button
                   type="button"
@@ -1781,28 +1321,31 @@ export default function App() {
 
       {result && (
         <>
-          <div className="top-actions">
-            <button
-              className="secondary-btn"
-              onClick={() => downloadJson(result, `${query}_result.json`)}
-            >
-              <Download size={18} />
-              JSON yuklab olish
-            </button>
-            <button
-              className="secondary-btn"
-              onClick={() => downloadJson(result?.evidences || [], `${query}_evidences.json`)}
-            >
-              <Download size={18} />
-              Evidences JSON
-            </button>
-            <button
-              className="secondary-btn"
-              onClick={() => downloadJson(result?.technical_task || {}, `${query}_technical_task.json`)}
-            >
-              <Download size={18} />
-              Texnik topshiriq JSON
-            </button>
+          <div className="result-header">
+            <Tabs value={activeTab} onChange={setActiveTab} items={tabItems} />
+            <div className="top-actions">
+              <button
+                className="secondary-btn"
+                onClick={() => downloadJson(result, `${query}_result.json`)}
+              >
+                <Download size={18} />
+                JSON yuklab olish
+              </button>
+              <button
+                className="secondary-btn"
+                onClick={() => downloadJson(result?.evidences || [], `${query}_evidences.json`)}
+              >
+                <Download size={18} />
+                Evidences JSON
+              </button>
+              <button
+                className="secondary-btn"
+                onClick={() => downloadJson(result?.technical_task || {}, `${query}_technical_task.json`)}
+              >
+                <Download size={18} />
+                Texnik topshiriq JSON
+              </button>
+            </div>
           </div>
 
           {result?.source_status && (
@@ -1810,7 +1353,6 @@ export default function App() {
               {Object.entries(result.source_status).map(([source, info]) => {
                 const status = info?.status || "unknown";
                 const count = info?.count ?? 0;
-                const eligible = info?.price_eligible_count ?? 0;
                 const message = info?.message;
 
                 return (
@@ -1822,7 +1364,7 @@ export default function App() {
                     />
                     <div className={`status-badge ${status}`}>{status}</div>
                     <p className="muted">
-                      Evidence: <b>{count}</b> · Price eligible: <b>{eligible}</b>
+                      Evidence: <b>{count}</b>
                     </p>
                     {message && <p className="muted">{message}</p>}
                   </Card>
@@ -1830,8 +1372,6 @@ export default function App() {
               })}
             </div>
           )}
-
-          <Tabs value={activeTab} onChange={setActiveTab} items={tabItems} />
 
           {activeTab === "result" && (
             <>
@@ -1943,64 +1483,7 @@ export default function App() {
                   )}
                 </Card>
 
-                <Card className="full">
-                  <SectionTitle
-                    icon={<BarChart3 size={22} />}
-                    title="Narx tahlili"
-                    subtitle="Bitta dona narxi bo‘yicha hisoblangan"
-                  />
-
-                  <div className="stats-grid">
-                    <StatCard label="Bitimlar soni" value={priceGlobal?.count ?? "—"} />
-                    <StatCard label="Minimal narx" value={formatMoney(priceGlobal?.min_price)} />
-                    <StatCard label="Maksimal narx" value={formatMoney(priceGlobal?.max_price)} />
-                    <StatCard label="O‘rtacha narx" value={formatMoney(priceGlobal?.avg_price)} />
-                    <StatCard label="Median narx" value={formatMoney(priceGlobal?.median_price)} />
-                    <StatCard
-                      label="Tavsiya diapazoni"
-                      value={`${formatMoney(priceGlobal?.recommended_min_price)} - ${formatMoney(
-                        priceGlobal?.recommended_max_price
-                      )}`}
-                    />
-                  </div>
-                </Card>
-
-                {priceBySource && (
-                  <Card className="full">
-                    <SectionTitle
-                      icon={<BarChart3 size={22} />}
-                      title="Narx tahlili (manbalar kesimida)"
-                      subtitle="Har bir manba bo‘yicha alohida"
-                    />
-
-                    <div className="table-wrap">
-                      <table>
-                        <thead>
-                          <tr>
-                            <th>Manba</th>
-                            <th>Count</th>
-                            <th>Median</th>
-                            <th>O‘rtacha</th>
-                            <th>Izoh</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {Object.entries(priceBySource).map(([source, row]) => (
-                            <tr key={source}>
-                              <td>{source}</td>
-                              <td>{row?.count ?? 0}</td>
-                              <td>{formatMoney(row?.median_price)}</td>
-                              <td>{formatMoney(row?.avg_price)}</td>
-                              <td>{row?.note || row?.excluded_reason || "—"}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </Card>
-                )}
-
-                {(auditFlags.participantsOne.length > 0 || auditFlags.bigStartDealDelta.length > 0) && (
+                {auditFlags.participantsOne.length > 0 && (
                   <Card className="warning-card full">
                     <SectionTitle
                       icon={<ShieldAlert size={22} />}
@@ -2013,11 +1496,6 @@ export default function App() {
                         label="Qatnashchi = 1"
                         value={auditFlags.participantsOne.length}
                         hint="participants_count = 1 bo‘lgan bitimlar"
-                      />
-                      <StatCard
-                        label="Start→Deal farqi katta"
-                        value={auditFlags.bigStartDealDelta.length}
-                        hint={`|farq| ≥ ${auditFlags.deltaThresholdPct}%`}
                       />
                       <StatCard
                         label="Eslatma"
@@ -2036,7 +1514,7 @@ export default function App() {
                                 <th>Manba</th>
                                 <th>Lot</th>
                                 <th>Mahsulot</th>
-                                <th>Narx</th>
+                                <th>Status</th>
                                 <th>Link</th>
                               </tr>
                             </thead>
@@ -2046,47 +1524,7 @@ export default function App() {
                                   <td>{ev?.source_name || "—"}</td>
                                   <td>{ev?.lot_display_no || "—"}</td>
                                   <td>{ev?.product_name || ev?.category_name || "—"}</td>
-                                  <td>{isFiniteNumber(ev?.deal_cost) ? formatMoney(ev.deal_cost) : "—"}</td>
-                                  <td>
-                                    {ev?.source_url ? (
-                                      <a href={ev.source_url} target="_blank" rel="noreferrer">
-                                        Ochish
-                                      </a>
-                                    ) : (
-                                      "—"
-                                    )}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </>
-                    )}
-
-                    {auditFlags.bigStartDealDelta.length > 0 && (
-                      <>
-                        <h3 style={{ marginTop: 16 }}>Boshlang‘ich narx va bitim narxi farqi</h3>
-                        <div className="table-wrap">
-                          <table>
-                            <thead>
-                              <tr>
-                                <th>Manba</th>
-                                <th>Lot</th>
-                                <th>Boshlang‘ich</th>
-                                <th>Bitim</th>
-                                <th>Farq</th>
-                                <th>Link</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {auditFlags.bigStartDealDelta.slice(0, 10).map(({ ev, pct }, idx) => (
-                                <tr key={`${ev?.source_name}-${ev?.lot_display_no}-${idx}`}>
-                                  <td>{ev?.source_name || "—"}</td>
-                                  <td>{ev?.lot_display_no || "—"}</td>
-                                  <td>{formatMoney(ev?.start_cost)}</td>
-                                  <td>{formatMoney(ev?.deal_cost)}</td>
-                                  <td>{typeof pct === "number" ? `${pct.toFixed(1)}%` : "—"}</td>
+                                  <td>{ev?.deal_status_name || "—"}</td>
                                   <td>
                                     {ev?.source_url ? (
                                       <a href={ev.source_url} target="_blank" rel="noreferrer">
@@ -2120,38 +1558,14 @@ export default function App() {
                 </Card>
               </div>
 
-              {priceGlobal?.suspicious_prices?.length > 0 && (
-                <Card className="warning-card">
-                  <SectionTitle
-                    icon={<ShieldAlert size={22} />}
-                    title="Shubhali past narxlar"
-                    subtitle="O‘rtacha narxdan past bo‘lgan holatlar (foiz bilan)"
-                  />
-
-                  <div className="table-wrap">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Lot</th>
-                          <th>Mahsulot</th>
-                          <th>Narx</th>
-                          <th>Sabab</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {priceGlobal.suspicious_prices.slice(0, 10).map((item, index) => (
-                          <tr key={index}>
-                            <td>{item.lot_display_no}</td>
-                            <td>{item.product_name}</td>
-                            <td>{formatMoney(item.unit_price)}</td>
-                            <td>{item.reason}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </Card>
-              )}
+              <Card className="full">
+                <SectionTitle
+                  icon={<Database size={22} />}
+                  title="Tender parametrlari (jadval)"
+                  subtitle="Har bir lot bo‘yicha yig‘ilgan parametrlar va hujjat linklari"
+                />
+                <EvidenceTable evidences={evidences} />
+              </Card>
 
               {result.validation_warnings?.length > 0 && (
                 <Card className="warning-card">
@@ -2177,59 +1591,8 @@ export default function App() {
               <Card className="full">
                 <SectionTitle
                   icon={<BarChart3 size={22} />}
-                  title="Narx trend grafigi"
-                  subtitle="Oylar kesimida unit_price dinamikasi"
-                />
-                <LineChart
-                  data={monthlySeries}
-                  series={[
-                    { key: "median", label: "Median", color: "#2563eb" },
-                    { key: "avg", label: "O‘rtacha", color: "#16a34a", opacity: 0.9 },
-                    { key: "min", label: "Min", color: "#64748b", opacity: 0.65, width: 2 },
-                    { key: "max", label: "Max", color: "#dc2626", opacity: 0.75, width: 2 },
-                  ]}
-                />
-              </Card>
-
-              <Card className="full">
-                <SectionTitle
-                  icon={<BarChart3 size={22} />}
-                  title="Hududlar bo‘yicha narx tahlili"
-                  subtitle="Bitimlar soni = unit_price mavjud bo‘lgan bitimlar"
-                />
-                {regionStats.length > 0 ? (
-                  <div className="table-wrap">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Hudud</th>
-                          <th>Bitimlar soni</th>
-                          <th>Median narx</th>
-                          <th>O‘rtacha narx</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {regionStats.slice(0, 20).map((row) => (
-                          <tr key={row.key}>
-                            <td>{row.key}</td>
-                            <td>{row.count}</td>
-                            <td>{formatMoney(row.median)}</td>
-                            <td>{formatMoney(row.avg)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <p className="muted">Ma’lumot yo‘q</p>
-                )}
-              </Card>
-
-              <Card className="full">
-                <SectionTitle
-                  icon={<BarChart3 size={22} />}
                   title="Yetkazib beruvchi reytingi"
-                  subtitle="Bitimlar soni, umumiy summa, unit (amount) va risk indikatori"
+                  subtitle="Bitimlar soni, status va risk indikatori (ochiq ma’lumotlar asosida)"
                 />
                 {supplierRows.length > 0 ? (
                   <div className="table-wrap">
@@ -2240,8 +1603,8 @@ export default function App() {
                           <th>Muvaffaqiyatli</th>
                           <th>Riskli</th>
                           <th>Bitimlar</th>
+                          <th>Yakka</th>
                           <th>Unit (ma’lum)</th>
-                          <th>Umumiy summa</th>
                           <th>Asosiy kategoriya</th>
                           <th>Risk</th>
                           <th>Reyting</th>
@@ -2277,10 +1640,10 @@ export default function App() {
                               <td>{row.success_deals}</td>
                               <td>{row.risky_deals}</td>
                               <td>{row.total_deals}</td>
+                              <td>{row.single_bidder_deals || 0}</td>
                               <td>
                                 {row.unit_sum_known > 0 ? new Intl.NumberFormat("uz-UZ").format(row.unit_sum) : "—"}
                               </td>
-                              <td>{formatMoneyCompact(row.total_sum)}</td>
                               <td className="muted" title={row.main_category || ""}>
                                 {row.main_category ? String(row.main_category).slice(0, 56) : "—"}
                               </td>
@@ -2311,7 +1674,7 @@ export default function App() {
               <SectionTitle
                 icon={<Database size={22} />}
                 title="Evidence / Manbalar"
-                subtitle="Narx va texnik topshiriq qaysi lotlarga asoslanganini ko‘rsatadi"
+                subtitle="Texnik topshiriq va audit qaysi lotlarga asoslanganini ko‘rsatadi"
               />
               <Tabs
                 value={activeEvidenceSource}
