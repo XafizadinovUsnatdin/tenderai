@@ -117,16 +117,6 @@ function parseDateInput(value) {
   return date;
 }
 
-function buildFileUrl(sourceName, filePath) {
-  if (!filePath) return null;
-  const raw = String(filePath);
-  if (/^https?:\/\//i.test(raw)) return raw;
-  if (sourceName === "etender.uzex.uz") {
-    return `https://etender.uzex.uz/${raw.replace(/^\/+/, "")}`;
-  }
-  return raw;
-}
-
 function evText(ev) {
   return normalizeText(
     [
@@ -624,117 +614,63 @@ function EvidenceTable({ evidences }) {
         <table className="evidence-table">
           <thead>
             <tr>
+              <th>Parametrlar</th>
               <th>Manba</th>
               <th>Lot</th>
-              <th>Mahsulot / Kategoriya</th>
               <th>Sana</th>
               <th>Buyurtmachi</th>
               <th>Yetkazib beruvchi</th>
               <th>Ishtirokchi</th>
-              <th>Hujjatlar</th>
               <th>Status</th>
               <th>Link</th>
-              <th>Parametrlar</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((ev, index) => {
-            const name = ev?.product_name || ev?.category_name || "—";
-            const participantsText =
-              ev?.participants_count === null || ev?.participants_count === undefined
-                ? "—"
-                : String(ev.participants_count);
+              const participantsText =
+                ev?.participants_count === null || ev?.participants_count === undefined
+                  ? "—"
+                  : String(ev.participants_count);
 
-            const contractHref = buildFileUrl(ev?.source_name, ev?.contract_file_path);
-            const protocolHref = buildFileUrl(ev?.source_name, ev?.additional_protocol_file_path);
-            const protocolName =
-              ev?.additional_protocol_file_name ||
-              (ev?.additional_protocol_file_path
-                ? String(ev.additional_protocol_file_path).split("/").pop()
-                : null);
-            const contractName =
-              ev?.contract_file_name ||
-              (ev?.contract_file_path ? String(ev.contract_file_path).split("/").pop() : null);
-
-            return (
-              <tr key={index}>
-                <td>
-                  <div className="source-cell">
-                    <span>{ev?.source_name || "—"}</span>
-                    {ev?.source_type && <span className="muted tiny">{ev.source_type}</span>}
-                  </div>
-                </td>
-                <td>
-                  <div className="lot-cell">
-                    <div>{ev?.lot_display_no || "—"}</div>
-                    {ev?.lot_id !== null && ev?.lot_id !== undefined && (
-                      <div className="muted tiny">ID: {String(ev.lot_id)}</div>
-                    )}
-                  </div>
-                </td>
-                <td>{name}</td>
-                <td>{formatDate(ev?.deal_date)}</td>
-                <td>{ev?.customer_name || "—"}</td>
-                <td>{ev?.provider_name || "—"}</td>
-                <td>{participantsText}</td>
-                <td>
-                  <div className="files-cell">
-                    {(ev?.additional_protocol_file_name || ev?.additional_protocol_file_path) ? (
-                      <div className="file-row">
-                        <span className="file-label">Bayonnoma:</span>
-                        <span className="file-name" title={ev?.additional_protocol_file_path || ""}>
-                          {protocolName || "—"}
-                        </span>
-                        {protocolHref ? (
-                          <a className="file-open" href={protocolHref} target="_blank" rel="noreferrer">
-                            Ochish
-                          </a>
-                        ) : (
-                          <span className="muted tiny">—</span>
-                        )}
-                      </div>
+              return (
+                <tr key={index}>
+                  <td className="desc-cell">
+                    {ev?.condition ? <pre className="param-pre">{ev.condition}</pre> : "—"}
+                  </td>
+                  <td>
+                    <div className="source-cell">
+                      <span>{ev?.source_name || "—"}</span>
+                      {ev?.source_type && <span className="muted tiny">{ev.source_type}</span>}
+                    </div>
+                  </td>
+                  <td>
+                    <div className="lot-cell">
+                      <div>{ev?.lot_display_no || "—"}</div>
+                      {ev?.lot_id !== null && ev?.lot_id !== undefined && (
+                        <div className="muted tiny">ID: {String(ev.lot_id)}</div>
+                      )}
+                    </div>
+                  </td>
+                  <td>{formatDate(ev?.deal_date)}</td>
+                  <td>{ev?.customer_name || "—"}</td>
+                  <td>{ev?.provider_name || "—"}</td>
+                  <td>{participantsText}</td>
+                  <td>
+                    <div className="status-cell">
+                      <div>{ev?.deal_status_name || "—"}</div>
+                      {ev?.payment_status && <div className="muted">{ev.payment_status}</div>}
+                    </div>
+                  </td>
+                  <td>
+                    {ev?.source_url ? (
+                      <a href={ev.source_url} target="_blank" rel="noreferrer">
+                        Ochish
+                      </a>
                     ) : (
-                      <div className="muted tiny">Bayonnoma: —</div>
+                      "—"
                     )}
-
-                    {(ev?.contract_file_name || ev?.contract_file_path) ? (
-                      <div className="file-row">
-                        <span className="file-label">Shartnoma:</span>
-                        <span className="file-name" title={ev?.contract_file_path || ""}>
-                          {contractName || "—"}
-                        </span>
-                        {contractHref ? (
-                          <a className="file-open" href={contractHref} target="_blank" rel="noreferrer">
-                            Ochish
-                          </a>
-                        ) : (
-                          <span className="muted tiny">—</span>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="muted tiny">Shartnoma: —</div>
-                    )}
-                  </div>
-                </td>
-                <td>
-                  <div className="status-cell">
-                    <div>{ev?.deal_status_name || "—"}</div>
-                    {ev?.payment_status && <div className="muted">{ev.payment_status}</div>}
-                  </div>
-                </td>
-                <td>
-                  {ev?.source_url ? (
-                    <a href={ev.source_url} target="_blank" rel="noreferrer">
-                      Ochish
-                    </a>
-                  ) : (
-                    "—"
-                  )}
-                </td>
-                <td className="desc-cell">
-                  {ev?.condition ? <pre className="param-pre">{ev.condition}</pre> : "—"}
-                </td>
-              </tr>
+                  </td>
+                </tr>
               );
             })}
           </tbody>
@@ -1498,67 +1434,6 @@ export default function App() {
                   )}
                 </Card>
 
-                {auditFlags.participantsOne.length > 0 && (
-                  <Card className="warning-card full">
-                    <SectionTitle
-                      icon={<ShieldAlert size={22} />}
-                      title="Audit: Red flags"
-                      subtitle="Bu xulosa emas — tekshiruv uchun signal (evidence asosida)"
-                    />
-
-                    <div className="stats-grid">
-                      <StatCard
-                        label="Qatnashchi = 1"
-                        value={auditFlags.participantsOne.length}
-                        hint="participants_count = 1 bo‘lgan bitimlar"
-                      />
-                      <StatCard
-                        label="Eslatma"
-                        value="Qo‘lda tekshiring"
-                        hint="Tender konteksti muhim"
-                      />
-                    </div>
-
-                    {auditFlags.participantsOne.length > 0 && (
-                      <>
-                        <h3 style={{ marginTop: 16 }}>Qatnashchi = 1 bo‘lgan bitimlar</h3>
-                        <div className="table-wrap">
-                          <table>
-                            <thead>
-                              <tr>
-                                <th>Manba</th>
-                                <th>Lot</th>
-                                <th>Mahsulot</th>
-                                <th>Status</th>
-                                <th>Link</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {auditFlags.participantsOne.slice(0, 10).map((ev, idx) => (
-                                <tr key={`${ev?.source_name}-${ev?.lot_display_no}-${idx}`}>
-                                  <td>{ev?.source_name || "—"}</td>
-                                  <td>{ev?.lot_display_no || "—"}</td>
-                                  <td>{ev?.product_name || ev?.category_name || "—"}</td>
-                                  <td>{ev?.deal_status_name || "—"}</td>
-                                  <td>
-                                    {ev?.source_url ? (
-                                      <a href={ev.source_url} target="_blank" rel="noreferrer">
-                                        Ochish
-                                      </a>
-                                    ) : (
-                                      "—"
-                                    )}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </>
-                    )}
-                  </Card>
-                )}
-
                 <Card className="full">
                   <SectionTitle
                     icon={<CheckCircle2 size={22} />}
@@ -1577,7 +1452,7 @@ export default function App() {
                 <SectionTitle
                   icon={<Database size={22} />}
                   title="Tender parametrlari (jadval)"
-                  subtitle="Har bir lot bo‘yicha yig‘ilgan parametrlar va hujjat linklari"
+                  subtitle="Har bir lot bo‘yicha yig‘ilgan parametrlar (ketma-ket)"
                 />
                 <EvidenceTable evidences={evidences} />
               </Card>
@@ -1598,6 +1473,63 @@ export default function App() {
               )}
 
               <TechnicalTask task={result.technical_task} />
+
+              {auditFlags.participantsOne.length > 0 && (
+                <Card className="warning-card full">
+                  <SectionTitle
+                    icon={<ShieldAlert size={22} />}
+                    title="Audit: Red flags"
+                    subtitle="Bu xulosa emas — tekshiruv uchun signal (evidence asosida)"
+                  />
+
+                  <div className="stats-grid">
+                    <StatCard
+                      label="Qatnashchi = 1"
+                      value={auditFlags.participantsOne.length}
+                      hint="participants_count = 1 bo‘lgan bitimlar"
+                    />
+                    <StatCard
+                      label="Eslatma"
+                      value="Qo‘lda tekshiring"
+                      hint="Tender konteksti muhim"
+                    />
+                  </div>
+
+                  <h3 style={{ marginTop: 16 }}>Qatnashchi = 1 bo‘lgan bitimlar</h3>
+                  <div className="table-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Manba</th>
+                          <th>Lot</th>
+                          <th>Mahsulot</th>
+                          <th>Status</th>
+                          <th>Link</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {auditFlags.participantsOne.slice(0, 10).map((ev, idx) => (
+                          <tr key={`${ev?.source_name}-${ev?.lot_display_no}-${idx}`}>
+                            <td>{ev?.source_name || "—"}</td>
+                            <td>{ev?.lot_display_no || "—"}</td>
+                            <td>{ev?.product_name || ev?.category_name || "—"}</td>
+                            <td>{ev?.deal_status_name || "—"}</td>
+                            <td>
+                              {ev?.source_url ? (
+                                <a href={ev.source_url} target="_blank" rel="noreferrer">
+                                  Ochish
+                                </a>
+                              ) : (
+                                "—"
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
+              )}
             </>
           )}
 
