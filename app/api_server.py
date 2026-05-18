@@ -63,6 +63,60 @@ def extract_json(text: str) -> dict[str, Any]:
         return json.loads(match.group(0))
 
 
+_RU_STOPWORDS = {
+    "и",
+    "в",
+    "во",
+    "на",
+    "по",
+    "с",
+    "со",
+    "к",
+    "ко",
+    "от",
+    "из",
+    "у",
+    "для",
+    "или",
+    "без",
+    "при",
+    "над",
+    "под",
+    "про",
+    "об",
+    "о",
+    "до",
+    "за",
+}
+
+
+def extract_query_cyrillic_keywords(query: str, max_items: int = 2) -> list[str]:
+    """
+    Query kirillcha bo‘lsa, LLM xato tushunib yubormasligi uchun original so‘rovdan ham 1-2 ta seed keyword ajratamiz.
+    Masalan: "шины для легковых автомобилей" -> ["шины", "автомобилей"] (stopwordlar tashlanadi).
+    """
+    if not query:
+        return []
+
+    tokens = re.findall(r"[\u0400-\u04FF]{3,}", query.lower())
+    tokens = [t for t in tokens if t not in _RU_STOPWORDS]
+
+    unique: list[str] = []
+    for t in tokens:
+        if t not in unique:
+            unique.append(t)
+
+    if not unique:
+        return []
+
+    first = unique[0]
+    longest = max(unique, key=len)
+    out = [first]
+    if longest != first:
+        out.append(longest)
+    return out[:max_items]
+
+
 async def call_openrouter(prompt: str) -> str:
     api_key = os.getenv("OPENROUTER_API_KEY")
     model = os.getenv("OPENROUTER_MODEL", "openai/gpt-4o-mini")
@@ -176,6 +230,13 @@ async def generate_technical_task(request: GenerateRequest):
 
         if not keywords:
             keywords = [request.query]
+        else:
+            # Query kirillcha bo‘lsa ham, original so‘zlardan seed keyword qo‘shamiz (LLM ba'zan adashtiradi).
+            seed = extract_query_cyrillic_keywords(request.query, max_items=2)
+            if seed:
+                keywords = list(dict.fromkeys([*keywords, *seed]))
+                # Portalga haddan tashqari ko‘p keyword yubormaslik uchun limit
+                keywords = keywords[:8]
 
         enabled_sources = request.enabled_sources or [
             "xarid.uzex.uz",

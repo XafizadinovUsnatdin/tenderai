@@ -43,12 +43,17 @@ Sening vazifang:
 5. Javobni faqat JSON formatda qaytarish.
 
 Muhim:
+- Foydalanuvchi so‘rovi lotincha ham, kirillcha (ruscha yoki o‘zbekcha) ham bo‘lishi mumkin.
+- Agar so‘rov allaqachon kirill/ruscha bo‘lsa, ma’noni buzmasdan, asosiy mahsulot nomini o‘zgartirmasdan ishlat.
+- O‘xshash so‘zlarni adashtirma: masalan "шины" (tyres) so‘zini "машины" (machines/cars) ga almashtirma.
+- `search_keywords_ru` ichida kamida bitta keyword foydalanuvchi so‘rovdagi asosiy kirill so‘z(lar)dan aynan o‘z holicha bo‘lsin (agar so‘rovda kirill bo‘lsa).
 - Aniq brand/modelni emas, umumiy mahsulot turini top.
 - Masalan: "TP-Link TL-SG108S" → "коммутатор", "сетевой коммутатор".
 - Masalan: "HP LaserJet" → "принтер", "лазерный принтер".
 - Masalan: "konditsioner 12 BTU" → "кондиционер".
 - Masalan: "stul" → "стул".
 - Masalan: "toner cartridge" → "картридж".
+- Masalan: "шины для легковых автомобилей" → "шины", "автомобильные шины", "шина".
 - Agar bu xizmat bo‘lsa, is_service=true qil.
 
 JSON format:

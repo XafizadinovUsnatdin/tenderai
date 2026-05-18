@@ -110,14 +110,6 @@ body {
   color: #334155;
 }
 
-.query-fixes {
-  margin-top: 10px;
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
 .main-input {
   flex: 1;
 }
