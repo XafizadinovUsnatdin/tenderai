@@ -3,10 +3,12 @@ import os
 import re
 from typing import Any
 from datetime import datetime, timedelta
+from pathlib import Path
 import httpx
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from app.connectors.xarid_uzex_connector import XaridUzexConnector
@@ -27,13 +29,31 @@ app = FastAPI(
     version="1.0.0",
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
+ROOT_DIR = Path(__file__).resolve().parent.parent
+FRONTEND_DIST_DIR = ROOT_DIR / "frontend" / "dist"
+FRONTEND_INDEX_FILE = FRONTEND_DIST_DIR / "index.html"
+
+
+def _parse_cors_origins() -> tuple[list[str], bool]:
+    raw = (os.getenv("CORS_ORIGINS") or "").strip()
+    if raw:
+        origins = [o.strip() for o in raw.split(",") if o.strip()]
+        if origins == ["*"]:
+            return origins, False
+        return origins, True
+
+    return [
         "http://localhost:5173",
         "http://127.0.0.1:5173",
-    ],
-    allow_credentials=True,
+    ], True
+
+
+cors_origins, cors_allow_credentials = _parse_cors_origins()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_origins,
+    allow_credentials=cors_allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -204,10 +224,34 @@ def filter_by_period(evidences, period_months: int):
 
 @app.get("/")
 async def root():
-    return {
-        "message": "TenderAI API ishlayapti",
-        "docs": "/docs",
-    }
+    if FRONTEND_INDEX_FILE.exists():
+        return FileResponse(FRONTEND_INDEX_FILE)
+
+    return {"message": "TenderAI API ishlayapti", "docs": "/docs"}
+
+
+@app.get("/{full_path:path}")
+async def spa_fallback(full_path: str):
+    """
+    Production deploy uchun: `frontend/dist` mavjud bo‘lsa, SPA frontendni bitta servisdan serve qiladi.
+    """
+    if not FRONTEND_INDEX_FILE.exists():
+        raise HTTPException(status_code=404, detail="Not found")
+
+    # API va docs routelarini tegmasdan qoldiramiz (ular yuqorida aniq route sifatida bor).
+    if full_path.startswith(("api/", "docs", "openapi.json", "redoc")):
+        raise HTTPException(status_code=404, detail="Not found")
+
+    requested = (FRONTEND_DIST_DIR / full_path).resolve()
+    try:
+        requested.relative_to(FRONTEND_DIST_DIR.resolve())
+    except Exception:
+        return FileResponse(FRONTEND_INDEX_FILE)
+
+    if requested.is_file():
+        return FileResponse(requested)
+
+    return FileResponse(FRONTEND_INDEX_FILE)
 
 
 @app.post("/api/generate")
