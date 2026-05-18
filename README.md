@@ -51,6 +51,33 @@ npm run dev
 
 Frontend: `http://127.0.0.1:5173`
 
+## Deploy (Render — bitta servisda backend + frontend)
+
+Loyiha Docker orqali bitta web servis sifatida deploy qilinadi:
+- Frontend build: `frontend/` (Vite)
+- Backend: `app/api_server.py` (FastAPI)
+- Production’da frontend `frontend/dist` dan serve qilinadi, API esa `/api/generate`.
+
+### 1) Render’ga ulash
+
+1. Render Dashboard → **New** → **Blueprint**
+2. GitHub repo: `XafizadinovUsnatdin/tenderai`
+3. Blueprint file: repo root’dagi `render.yaml`
+4. Environment variables:
+   - `OPENROUTER_API_KEY` (majburiy)
+   - `OPENROUTER_MODEL` (ixtiyoriy, default `openai/gpt-4o-mini`)
+   - `OPENROUTER_BASE_URL` (ixtiyoriy)
+
+### 2) Deploydan keyin
+
+- Sayt: `https://<render-app>.onrender.com/`
+- API: `https://<render-app>.onrender.com/api/generate`
+- Swagger: `https://<render-app>.onrender.com/docs`
+
+Eslatma:
+- Frontend production’da `VITE_API_URL` talab qilmaydi (default `/api/generate`).
+- Agar frontend’ni alohida domen’da deploy qilsangiz, backend’da `CORS_ORIGINS` ni shunga sozlang (vergul bilan bir nechta domain bo‘lishi mumkin).
+
 ## Sozlamalar (.env)
 
 `.env.example` dan `.env` ga nusxa oling va quyidagini to‘ldiring:
@@ -106,4 +133,3 @@ Eslatma: `.env` ni gitga commit qilmang.
 - Narx trend grafigi (unit_price bo‘lsa)
 - Hudud / provider kesimida narx tahlili
 - Texnik parametrlar summary chip’lari
-
