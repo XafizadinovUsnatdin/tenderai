@@ -46,6 +46,8 @@ Muhim:
 - Foydalanuvchi so‘rovi lotincha ham, kirillcha (ruscha yoki o‘zbekcha) ham bo‘lishi mumkin.
 - Foydalanuvchi ruscha so‘zlarni lotin harflarida translit qilib yozishi ham mumkin (masalan: "bumaga A4 list").
   Bunday holatda `search_keywords_ru` ichida ruscha kirillcha keywordlarni ber (masalan: ["бумага", "лист", "бумага a4"]).
+- Foydalanuvchi so‘rovda imlo xatolari (typo) qilishi mumkin. Shuni to‘g‘rilab tushun va qidiruv keywordlarini xatosiz qaytar.
+  Masalan: "konditsioenr" → ["кондиционер", "сплит-система"], "prinetr" → ["принтер"] va h.k.
 - Agar so‘rov allaqachon kirill/ruscha bo‘lsa, ma’noni buzmasdan, asosiy mahsulot nomini o‘zgartirmasdan ishlat.
 - O‘xshash so‘zlarni adashtirma: masalan "шины" (tyres) so‘zini "машины" (machines/cars) ga almashtirma.
 - `search_keywords_ru` ichida kamida bitta keyword foydalanuvchi so‘rovdagi asosiy kirill so‘z(lar)dan aynan o‘z holicha bo‘lsin (agar so‘rovda kirill bo‘lsa).
