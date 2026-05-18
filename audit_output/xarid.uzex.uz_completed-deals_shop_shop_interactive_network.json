@@ -1,0 +1,106 @@
+[
+  {
+    "url": "https://node-ya-5.jivosite.com/widget/status/561952/S4kF7dCcRe?rnd=0.24571492905056502",
+    "method": "GET",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8",
+    "post_data": null,
+    "response_preview": "{\"premium\":true,\"maintenance\":false,\"config_updated_ts\":1747810933,\"agents\":[]}"
+  },
+  {
+    "url": "https://mc.yandex.ru/watch/96874542/1?wmode=7&page-url=https%3A%2F%2Fxarid.uzex.uz%2Fcompleted-deals%2Fshop%2Fshop&charset=utf-8&uah=chu%0A%22Chromium%22%3Bv%3D%22147%22%2C%22Not.A%2FBrand%22%3Bv%3D%228%22%0Acha%0Ax86%0Achb%0A64%0Achf%0A147.0.7727.15%0Achl%0A%22Chromium%22%3Bv%3D%22147.0.7727.15%22%2C%22Not.A%2FBrand%22%3Bv%3D%228.0.0.0%22%0Achm%0A%3F0%0Achp%0AWindows%0Achv%0A10.0&browser-info=pv%3A1%3Avf%3Apudvqnsfv6ib5kxc1gvz1plajlgbj%3Afu%3A0%3Aen%3Autf-8%3Ala%3Aru-RU%3Av%3A2500%3Acn%3A1%3Adp%3A0%3Als%3A1303134425905%3Ahid%3A446618961%3Az%3A300%3Ai%3A20260514000406%3Aet%3A1778699046%3Ac%3A1%3Arn%3A785039750%3Arqn%3A1%3Au%3A1778699046497517306%3Aw%3A1280x720%3As%3A1280x720x32%3Ask%3A1.0000000149011612%3Awv%3A2%3Ads%3A21%2C172%2C37%2C1%2C1%2C0%2C%2C758%2C%2C%2C%2C%2C%3Aco%3A0%3Ahdl%3A1%3Acpf%3A1%3Ans%3A1778699044199%3Arqnl%3A1%3Ast%3A1778699046%3At%3ADAVLAT%20XARIDLARI%20MAXSUS%20AXBOROT%20PORTALI&t=clt%28900%29gdpr%2814%29clc%280-0-0%29rqnt%281%29aw%281%29rcm%281%29cdl%28na%29eco%2842009088%29ti%281%29&redirnss=1",
+    "method": "GET",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8",
+    "post_data": null,
+    "response_preview": "{\"settings\":{\"auto_goals\":1,\"button_goals\":0,\"c_recp\":\"1.00000\",\"form_goals\":1,\"pcs\":\"0\",\"webvisor\":{\"arch_type\":\"none\",\"date\":\"2026-04-20 20:08:09\",\"forms\":1,\"recp\":\"0.29900\"},\"sbp\": {\"a\":\"6Xy0SW7XXoZLig+4EWjhZOm/1bd1UHKfI8qR0FpAUWvbn5oVdOO7OTB7gqdsziPv\", \"b\":\"F79MCjGPsSP4L8btXC3wfn9/S2QBxCjQe+h/FswKdaoKQdakLRAwqhtnEUi+1XR4\"},\"eu\":0,\"nss\":1,\"hittoken\":\"1778699046_1e90a3299ec7acf5cb60cc7599845c60a651c0748c42b38387e48c0ac2c8cc62\",\"cf\":1,\"mcf\":1,\"csu\":\"https://yandex.ru/an/mapuid/googledctssp/\",\"wstoken\":\"11030.pRMUOn7rHPgt-3dZ_DCwWv0cNTrGGfaTMBsxrz5IbPCQJxhl_cg-2bku3dR1x42H97Ju4jfLCsZJgVMsts8dVubBKdDKmCqs98EEjJnfRt8,.vGQjNiHy9gMRfBpJ1LkRC-1gyBI,\",\"ev\":{\"pvt\":1778699046},\"hidv2\":\"2577359607232987202\",\"ymclid\":\"2577359607232987202\"},\"userData\":{}}"
+  },
+  {
+    "url": "https://xarid-api-shop.uzex.uz/Common/GetDealStatuses",
+    "method": "GET",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8",
+    "post_data": null,
+    "response_preview": "[{\"id\":1,\"name\":\"Новая\"},{\"id\":2,\"name\":\"Оплачена\"},{\"id\":3,\"name\":\"Поставлена\"},{\"id\":4,\"name\":\"Рассторжена\"},{\"id\":5,\"name\":\"Поставлена (Восстановлена)\"},{\"id\":11,\"name\":\"Срок оплаты истек\"},{\"id\":13,\"name\":\"Срок доставки истек\"},{\"id\":14,\"name\":\"Аннулирована - не оплачен\"}]"
+  },
+  {
+    "url": "https://xarid-api-trade.uzex.uz/Info/GetPopup",
+    "method": "GET",
+    "status": 204,
+    "content_type": "",
+    "post_data": null,
+    "response_preview": null
+  },
+  {
+    "url": "https://xarid-api-trade.uzex.uz/Common/GetNews",
+    "method": "GET",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8",
+    "post_data": null,
+    "response_preview": "[{\"id\":445,\"created_date\":\"2026-02-23T16:00:17\",\"content\":\"Sunʼiy intellekt (AI Chat-bot)\\r\\n\",\"file_path\":\"files/user-files/2026/2/23\",\"lang_id\":4,\"name\":\"a59d921f-83ed-4459-8fc0-301181a210ff.pdf\",\"ext\":\"pdf\"},{\"id\":443,\"created_date\":\"2026-02-23T15:55:59\",\"content\":\"Elektron to‘g‘ridan-to‘g‘ri xaridlarda shartnomalarni DIDOX tizimi orqali  imzolash imkoniyati \",\"file_path\":\"files/user-files/2026/2/23\",\"lang_id\":4,\"name\":\"6c0efeb3-6fca-477a-ad4c-dd5ba2b9aa66.pdf\",\"ext\":\"pdf\"},{\"id\":442,\"created_date\":\"2026-02-23T15:55:01\",\"content\":\"Xarid ishtirokchilarining Davlat soliq qo‘mitasidagi ma’lumotlari.\",\"file_path\":\"files/user-files/2026/2/23\",\"lang_id\":4,\"name\":\"7e6b0207-3804-4f61-b737-47c41f4f959e.pdf\",\"ext\":\"pdf\"},{\"id\":441,\"created_date\":\"2026-02-23T15:52:42\",\"content\":\"Qo`shimcha kelishuvda\\r\\nqo`shimcha hujjat yuklash\",\"file_path\":\"files/user-files/2026/2/23\",\"lang_id\":4,\"name\":\"0ae14e28-eebe-4d59-b4ab-adde5295857b.pdf\",\"ext\":\"pdf\"},{\"id\":421,\"created_date\":\"2026-01-06T12:01:27\",\"content\":\"TAKLIF SO‘ROVI” yo‘riqnomasi\",\"file_path\":\"files/user-files/2026/1/6\",\"lang_id\":4,\"name\":\"ff3d7ae8-6342-4d47-8667-8878d1238539.pdf\",\"ext\":\"pdf\"},{\"id\":403,\"created_date\":\"2025-12-02T14:27:01\",\"content\":\"Milliy do’kon sahifasida mahalliy ishlab chiqaruvchi diler qo’shish tartibi\\r\\n\",\"file_path\":\"files/user-files/2025/12/2\",\"lang_id\":4,\"name\":\"bbc85e56-1721-4582-830a-3ac614bd4ed5.pdf\",\"ext\":\"pdf\"},{\"id\":402,\"created_date\":\"2025-12-02T14:26:21\",\"content\":\"xarid.uzex.uz elektron tizimida “tovarlar katalogi” orqali oferta joylash tartibi\",\"file_path\":\"files/user-files/2025/12/2\",\"lang_id\":4,\"name\":\"9b5321f2-336b-45c2-a51b-5f750ad13abc.pdf\",\"ext\":\"pdf\"},{\"id\":401,\"created_date\":\"2025-12-02T14:25:02\",\"content\":\"Mahalliy ishlab chiqaruvchilar uchun ekoplatforma.uz tizimida “tovarlar katalogi”ni yaratish va oferta joylash uchun yo‘riqnoma\",\"file_path\":\"files/user-files/2025/12/2\",\"lang_id\":4,\"name\":\"659f32df-988d-441f-9105-97511225fb6c.pdf\",\"ext\":\"pdf\"},{\"id\":385,\"created_date\":\"2025-06-13T16:58:55\",\"content\":\"Xarid.uzex.uz сайтида\\r\\nХАБАРНОМА функцияси\\r\\n\",\"file_path\":\"files/user-files/2025/6/13\",\"lang_id\":1,\"name\":\"1ed4b9a2-900c-4daa-8d21-698f93e12aa6.pdf\",\"ext\":\"pdf\"},{\"id\":384,\"created_date\":\"2025-06-13T16:58:26\",\"content\":\"Xarid.uzex.uz saytida\\r\\nXABARNOMA funksiyasi\\r\\n\",\"file_path\":\"files/user-files/2025/6/13\",\"lang_id\":4,\"name\":\"8bcbdac9-c69c-4bb6-8cb7-84008f08e886.pdf\",\"ext\":\"pdf\"},{\"id\":383,\"created_date\":\"2025-06-13T16:53:13\",\"content\":\"Функция УВЕДОМЛЕНИЯ\\r\\nна сайте xarid.uzex.uz\\r\\n\",\"file_path\":\"files/user-files/2025/6/13\",\"lang_id\":2,\"name\":\"b03d955e-8f9d-4c4a-878c-109f675f8e9b.pdf\",\"ext\":\"pdf\"},{\"id\":361,\"created_date\":\"2025-04-17T12:48:42\",\"content\":\"Elektron to‘g‘ridan-to‘g‘ri xaridlarda shartnomalarni tasdiqlovchi shaxs \\r\\n\",\"file_path\":\"files/user-files/2025/4/17\",\"lang_id\":4,\"name\":\"b01dc5f2-66e9-4f54-bf1f-c080c31ed2d4.pdf\",\"ext\":\"pdf\"},{\"id\":342,\"created_date\":\"2025-03-04T18:04:15\",\"content\":\"2025-yil 1-martdan еlektron (milliy) do‘konda “"
+  },
+  {
+    "url": "https://xarid-api-trade.uzex.uz/Info/GetCurrentIp",
+    "method": "GET",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8",
+    "post_data": null,
+    "response_preview": "\"37.110.211.29\""
+  },
+  {
+    "url": "https://xarid-api-trade.uzex.uz/Lib/GetRegions",
+    "method": "GET",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8",
+    "post_data": null,
+    "response_preview": "[{\"id\":2,\"name\":\"Андижанская область\"},{\"id\":242,\"name\":\"Бухарская область\"},{\"id\":487,\"name\":\"Джизакская область\"},{\"id\":679,\"name\":\"Кашкадарьинская область\"},{\"id\":1008,\"name\":\"Навоийская область\"},{\"id\":1150,\"name\":\"Наманганская область\"},{\"id\":3049,\"name\":\"Республика Каракалпакстан\"},{\"id\":1413,\"name\":\"Самаркандская область\"},{\"id\":1692,\"name\":\"Сурхандарьинская область\"},{\"id\":1977,\"name\":\"Сырдарьинская область\"},{\"id\":2120,\"name\":\"Ташкентская область\"},{\"id\":2434,\"name\":\"Ферганская область\"},{\"id\":2858,\"name\":\"Хорезмская область\"},{\"id\":2105,\"name\":\"город Ташкент\"}]"
+  },
+  {
+    "url": "https://xarid-api-trade.uzex.uz/Lib/GetCategories",
+    "method": "GET",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8",
+    "post_data": null,
+    "response_preview": "[{\"id\":106825,\"name\":\"Продукция и услуги сельского хозяйства и охоты\"},{\"id\":107919,\"name\":\"Продукция лесоводства, лесозаготовок и связанные с этим услуги\"},{\"id\":108163,\"name\":\"Рыба и прочая продукция рыболовства и рыбоводства; услуги, связанные с рыболовством и рыбоводством\"},{\"id\":108595,\"name\":\"Уголь\"},{\"id\":108631,\"name\":\"Нефть сырая и газ природный\"},{\"id\":108768,\"name\":\"Руды металлические\"},{\"id\":108871,\"name\":\"Продукция горнодобывающих производств прочая\"},{\"id\":109090,\"name\":\"Услуги в области добычи полезных ископаемых\"},{\"id\":109122,\"name\":\"Продукты пищевые\"},{\"id\":111223,\"name\":\"Напитки\"},{\"id\":111452,\"name\":\"Изделия табачные\"},{\"id\":111494,\"name\":\"Текстиль и изделия текстильные\"},{\"id\":112246,\"name\":\"Одежда\"},{\"id\":112963,\"name\":\"Кожа и изделия из кожи\"},{\"id\":113218,\"name\":\"Древесина и изделия из дерева и пробки, кроме мебели; изделия из соломки и материалов для плетения\"},{\"id\":113434,\"name\":\"Бумага и изделия из бумаги\"},{\"id\":113765,\"name\":\"Услуги печатные и услуги по копированию звуко- и видеозаписей, а также программных средств\"},{\"id\":113821,\"name\":\"Кокс и нефтепродукты\"},{\"id\":114027,\"name\":\"Вещества химические и продукты химические\"},{\"id\":115349,\"name\":\"Средства лекарственные и материалы, применяемые в медицинских целях\"},{\"id\":117359,\"name\":\"Изделия резиновые и пластмассовые\"},{\"id\":117611,\"name\":\"Продукты минеральные неметаллические прочие\"},{\"id\":118144,\"name\":\"Металлы основные\"},{\"id\":118845,\"name\":\"Изделия металлические готовые, кроме машин и оборудования\"},{\"id\":119460,\"name\":\"Оборудование компьютерное, электронное и оптическое\"},{\"id\":120182,\"name\":\"Оборудование электрическое\"},{\"id\":120735,\"name\":\"Машины и оборудование, не включенные в другие группировки\"},{\"id\":122010,\"name\":\"Средства автотранспортные, прицепы и полуприцепы\"},{\"id\":122283,\"name\":\"Средства транспортные и оборудование, прочие\"},{\"id\":122645,\"name\":\"Мебель\"},{\"id\":122780,\"name\":\"Изделия готовые прочие\"},{\"id\":123457,\"name\":\"Услуги по ремонту и монтажу машин и оборудования\"},{\"id\":123593,\"name\":\"Электроэнергия, газ, пар и кондиционирование воздуха\"},{\"id\":123678,\"name\":\"Вода природная; услуги по очистке воды и водоснабжению\"},{\"id\":123700,\"name\":\"Услуги по водоотведению; шлам сточных вод\"},{\"id\":123719,\"name\":\"Услуги по сбору, обработке и удалению отходов; услуги по утилизации отходов\"},{\"id\":123911,\"name\":\"Услуги по рекультивации и прочие услуги по утилизации отходо\"},{\"id\":123949,\"name\":\"Здания и работы по возведению зданий\"},{\"id\":124049,\"name\":\"Сооружения и строительные работы в области гражданского строительства\"},{\"id\":124278,\"name\":\"Работы строительные специализированные\"},{\"id\":124491,\"name\":\"Услуги по оптовой и розничной торговле и услуги по ремонту автотранспортных средств и мотоциклов\"},{\"id\":124577,\"name\":\"Услуги по оптовой торговле, кроме оптовой торговли автотранспортными средствами и мотоциклами\"},{\"id\":124970,\"name\":\"Услуги по розничной торговле, кроме розничной торговли автотранспортными средствами и мотоциклами\"},{\"id\":125374,\"name\":\"Ус"
+  },
+  {
+    "url": "https://xarid-api-trade.uzex.uz/Info/GetCurrentIp",
+    "method": "GET",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8",
+    "post_data": null,
+    "response_preview": "\"37.110.211.29\""
+  },
+  {
+    "url": "https://xarid-api-shop.uzex.uz/Common/GetCompletedDeals",
+    "method": "POST",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8",
+    "post_data": "{\"region_ids\":[],\"display_on_shop\":1,\"display_on_national\":0,\"year_id\":2026,\"from\":1,\"to\":12}",
+    "response_preview": "[{\"lot_id\":5184184,\"lot_display_no\":\"261110085184184\",\"category_name\":\"Услуги издательские\",\"product_name\":\"Услуга по подписке и доставке периодического печатного издания\",\"pcp_count\":1,\"js_properties\":null,\"condition\":\"«Forish tongi» газетасига 2026 йил учун обуна.  Нашрнинг асосий мақсади: Республика Президенти ва ҳукуматнинг Фармон ва Қарорларини ҳамда вилоят, туман ҳокимлигининг қарор ва фармойишларининг мазмун ва моҳиятларини оммага етказиш, иқтисодий ва ижтимоий-сиёсий масалалар бўйича олиб борилаётган ислоҳатларни ёритиш, тумандаги аҳолининг ахборотга бўлган эҳтиёжини қондиришдан иборат. Тумандаги воқеа-ҳодисаларни атрофлича холис ёритади. Ташкилотлар, корхона ва муассасаларда амалга ошираётган ишлар бўйича мақолалар бериб борилади. «Forish tongi» газетасига 2026 йил учун обуна бўлишингиз мумкин.\",\"amount\":2.0,\"deal_cost\":800000.0,\"customer_inn\":\"201409883\",\"customer_name\":\"Фориш туман Хайвонлар касалликлари ташхиси ва озик-овкат махсулотлари хавфсизлиги давлат маркази\",\"customer_region_name\":\"Джизакская область\",\"deal_date\":\"2026-05-13T22:51:17\",\"deal_id\":4469944,\"provider_inn\":\"200340427\",\"provider_name\":\"\\\"FORISH TONGI GAZETA TAHRIRIYATI\\\"\",\"provider_region_name\":\"Джизакская область\",\"beneficiary\":null,\"founder\":null,\"display_on_shop\":1,\"display_on_national\":0,\"is_budget\":1,\"type_name\":\"Бюджет\",\"kazna_status_id\":2,\"kazna_status\":\"Договор Зарегистрирован\",\"kazna_payment_status\":\"Оплачен\",\"kazna_created_date\":\"2026-05-13T22:51:17\",\"deal_status_name\":\"Оплачена\",\"rn\":1,\"total_count\":247562},{\"lot_id\":5184186,\"lot_display_no\":\"261110085184186\",\"category_name\":\"Услуги издательские\",\"product_name\":\"Услуга по подписке и доставке периодического печатного издания\",\"pcp_count\":1,\"js_properties\":null,\"condition\":\"«Forish tongi» газетасига 2026 йил учун обуна.  Нашрнинг асосий мақсади: Республика Президенти ва ҳукуматнинг Фармон ва Қарорларини ҳамда вилоят, туман ҳокимлигининг қарор ва фармойишларининг мазмун ва моҳиятларини оммага етказиш, иқтисодий ва ижтимоий-сиёсий масалалар бўйича олиб борилаётган ислоҳатларни ёритиш, тумандаги аҳолининг ахборотга бўлган эҳтиёжини қондиришдан иборат. Тумандаги воқеа-ҳодисаларни атрофлича холис ёритади. Ташкилотлар, корхона ва муассасаларда амалга ошираётган ишлар бўйича мақолалар бериб борилади. «Forish tongi» газетасига 2026 йил учун обуна бўлишингиз мумкин.\",\"amount\":3.0,\"deal_cost\":1200000.0,\"customer_inn\":\"201409883\",\"customer_name\":\"Фориш туман Хайвонлар касалликлари ташхиси ва озик-овкат махсулотлари хавфсизлиги давлат маркази\",\"customer_region_name\":\"Джизакская область\",\"deal_date\":\"2026-05-13T22:51:16\",\"deal_id\":4469943,\"provider_inn\":\"200340427\",\"provider_name\":\"\\\"FORISH TONGI GAZETA TAHRIRIYATI\\\"\",\"provider_region_name\":\"Джизакская область\",\"beneficiary\":null,\"founder\":null,\"display_on_shop\":1,\"display_on_national\":0,\"is_budget\":1,\"type_name\":\"Бюджет\",\"kazna_status_id\":2,\"kazna_status\":\"Договор Зарегистрирован\",\"kazna_payment_status\":\"Оплачен\",\"kazna_created_date\":\"2026-05-13T22:51:16\",\"deal_status_na"
+  },
+  {
+    "url": "https://xarid-api-trade.uzex.uz/Lib/GetDistricts/487",
+    "method": "GET",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8",
+    "post_data": null,
+    "response_preview": "[{\"id\":489,\"name\":\"Арнасайский район\"},{\"id\":500,\"name\":\"Бахмальский район\"},{\"id\":520,\"name\":\"Галляаральский район\"},{\"id\":678,\"name\":\"Джизак\"},{\"id\":3291,\"name\":\"Джизакский р-он\"},{\"id\":567,\"name\":\"Дустликский район\"},{\"id\":580,\"name\":\"Зааминский район\"},{\"id\":598,\"name\":\"Зарбдарский район\"},{\"id\":626,\"name\":\"Зафарабадский район\"},{\"id\":613,\"name\":\"Мирзачульский район\"},{\"id\":639,\"name\":\"Пахтакорский район\"},{\"id\":652,\"name\":\"Фаришский район\"},{\"id\":545,\"name\":\"Шароф Рашидовский район\"},{\"id\":667,\"name\":\"Янгиободский район\"}]"
+  },
+  {
+    "url": "https://xarid-api-trade.uzex.uz/Lib/GetProducts/108163?keyword=",
+    "method": "GET",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8",
+    "post_data": null,
+    "response_preview": "[{\"id\":469567,\"product_code\":\"03.11.50.000-00001\",\"type_id\":1,\"name\":\"Жемчуг\",\"category_id\":108163,\"category_name\":\"Рыба и прочая продукция рыболовства и рыбоводства; услуги, связанные с рыболовством и рыбоводством\",\"rn\":1,\"total_count\":20},{\"id\":475582,\"product_code\":\"03.22.10.390-00001\",\"type_id\":1,\"name\":\"Рыба пресноводная живая\",\"category_id\":108163,\"category_name\":\"Рыба и прочая продукция рыболовства и рыбоводства; услуги, связанные с рыболовством и рыбоводством\",\"rn\":2,\"total_count\":20},{\"id\":531931,\"product_code\":\"03.12.20.132-00001\",\"type_id\":1,\"name\":\"Сазан свежий или охлажденный\",\"category_id\":108163,\"category_name\":\"Рыба и прочая продукция рыболовства и рыбоводства; услуги, связанные с рыболовством и рыбоводством\",\"rn\":3,\"total_count\":20},{\"id\":545005,\"product_code\":\"03.12.30.190-00001\",\"type_id\":1,\"name\":\"Пиявки медицинские\",\"category_id\":108163,\"category_name\":\"Рыба и прочая продукция рыболовства и рыбоводства; услуги, связанные с рыболовством и рыбоводством\",\"rn\":4,\"total_count\":20},{\"id\":564905,\"product_code\":\"03.12.20.131-00001\",\"type_id\":1,\"name\":\"Карп пресноводный свежий или охлажденный\",\"category_id\":108163,\"category_name\":\"Рыба и прочая продукция рыболовства и рыбоводства; услуги, связанные с рыболовством и рыбоводством\",\"rn\":5,\"total_count\":20},{\"id\":565349,\"product_code\":\"03.12.20.198-00001\",\"type_id\":1,\"name\":\"Сом свежий или охлажденный\",\"category_id\":108163,\"category_name\":\"Рыба и прочая продукция рыболовства и рыбоводства; услуги, связанные с рыболовством и рыбоводством\",\"rn\":6,\"total_count\":20},{\"id\":566248,\"product_code\":\"03.12.20.133-00002\",\"type_id\":1,\"name\":\"Лещ свежий или охлажденный\",\"category_id\":108163,\"category_name\":\"Рыба и прочая продукция рыболовства и рыбоводства; услуги, связанные с рыболовством и рыбоводством\",\"rn\":7,\"total_count\":20},{\"id\":566295,\"product_code\":\"03.12.20.133-00003\",\"type_id\":1,\"name\":\"Амур свежий или охлажденный\",\"category_id\":108163,\"category_name\":\"Рыба и прочая продукция рыболовства и рыбоводства; услуги, связанные с рыболовством и рыбоводством\",\"rn\":8,\"total_count\":20},{\"id\":568338,\"product_code\":\"03.12.11.000-00001\",\"type_id\":1,\"name\":\"Рыба пресноводная декоративная живая\",\"category_id\":108163,\"category_name\":\"Рыба и прочая продукция рыболовства и рыбоводства; услуги, связанные с рыболовством и рыбоводством\",\"rn\":9,\"total_count\":20},{\"id\":573941,\"product_code\":\"03.21.90.120-00001\",\"type_id\":1,\"name\":\"Колесно-лопастный аэратор\",\"category_id\":108163,\"category_name\":\"Рыба и прочая продукция рыболовства и рыбоводства; услуги, связанные с рыболовством и рыбоводством\",\"rn\":10,\"total_count\":20},{\"id\":597107,\"product_code\":\"03.22.40.140-00001\",\"type_id\":1,\"name\":\"Молодь рыбы пресноводная\",\"category_id\":108163,\"category_name\":\"Рыба и прочая продукция рыболовства и рыбоводства; услуги, связанные с рыболовством и рыбоводством\",\"rn\":11,\"total_count\":20},{\"id\":642382,\"product_code\":\"03.11.11.000-00001\",\"type_id\":1,\"name\":\"Рыба морская декоративная\",\"category_id\":108163,\"category_name\":\"Рыба и про"
+  },
+  {
+    "url": "https://xarid-api-shop.uzex.uz/Common/GetCompletedDeals",
+    "method": "POST",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8",
+    "post_data": "{\"region_ids\":[],\"display_on_shop\":1,\"display_on_national\":0,\"year_id\":2026,\"from\":1,\"to\":12,\"keyword\":\"88\",\"customer_tin\":\"877\",\"region_id\":487,\"district_id\":678,\"category_id\":108163,\"product_code\":\"03.12.30.190-00001\",\"status_id\":11,\"Price_From\":1,\"Price_To\":9999,\"provider_tin\":\"8888\",\"date_from_format\":\"2026-05-12T19:04:11.000Z\",\"date_from\":\"13.05.2026 01:00\",\"date_to_format\":\"2026-05-06T19:04:11.000Z\",\"date_to\":\"07.05.2026 23:59\"}",
+    "response_preview": "[]"
+  }
+]

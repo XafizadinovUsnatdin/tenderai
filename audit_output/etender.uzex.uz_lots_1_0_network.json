@@ -1,0 +1,322 @@
+[
+  {
+    "url": "https://etender.uzex.uz/lots/1/0",
+    "method": "GET",
+    "status": 200,
+    "content_type": "text/html",
+    "post_data": null,
+    "response_preview": null
+  },
+  {
+    "url": "https://etender.uzex.uz/runtime.6d0c7dff840790cde48a.js",
+    "method": "GET",
+    "status": 200,
+    "content_type": "application/javascript",
+    "post_data": null,
+    "response_preview": null
+  },
+  {
+    "url": "https://etender.uzex.uz/styles.8ea6970a2bafba3cc80c.css",
+    "method": "GET",
+    "status": 200,
+    "content_type": "text/css",
+    "post_data": null,
+    "response_preview": null
+  },
+  {
+    "url": "https://etender.uzex.uz/polyfills.6652806919ab2518c60c.js",
+    "method": "GET",
+    "status": 200,
+    "content_type": "application/javascript",
+    "post_data": null,
+    "response_preview": null
+  },
+  {
+    "url": "https://etender.uzex.uz/Montserrat-Regular.de4a911e831ca01751ab.woff",
+    "method": "GET",
+    "status": 200,
+    "content_type": "application/font-woff",
+    "post_data": null,
+    "response_preview": null
+  },
+  {
+    "url": "https://etender.uzex.uz/scripts.8e5f8e65f35430eeca83.js",
+    "method": "GET",
+    "status": 200,
+    "content_type": "application/javascript",
+    "post_data": null,
+    "response_preview": null
+  },
+  {
+    "url": "https://etender.uzex.uz/main.46c6d04f065e34fa095f.js",
+    "method": "GET",
+    "status": 200,
+    "content_type": "application/javascript",
+    "post_data": null,
+    "response_preview": null
+  },
+  {
+    "url": "https://etender.uzex.uz/assets/images/assets/logo.svg",
+    "method": "GET",
+    "status": 200,
+    "content_type": "image/svg+xml",
+    "post_data": null,
+    "response_preview": null
+  },
+  {
+    "url": "https://etender.uzex.uz/assets/images/icons/excel-color.svg",
+    "method": "GET",
+    "status": 200,
+    "content_type": "image/svg+xml",
+    "post_data": null,
+    "response_preview": null
+  },
+  {
+    "url": "https://etender.uzex.uz/assets/images/footer/footer-top-2.svg",
+    "method": "GET",
+    "status": 200,
+    "content_type": "image/svg+xml",
+    "post_data": null,
+    "response_preview": null
+  },
+  {
+    "url": "https://etender.uzex.uz/assets/images/footer/footer-top-3.svg",
+    "method": "GET",
+    "status": 200,
+    "content_type": "image/svg+xml",
+    "post_data": null,
+    "response_preview": null
+  },
+  {
+    "url": "https://etender.uzex.uz/assets/images/footer/footer-top-1.svg",
+    "method": "GET",
+    "status": 200,
+    "content_type": "image/svg+xml",
+    "post_data": null,
+    "response_preview": null
+  },
+  {
+    "url": "https://etender.uzex.uz/assets/images/assets/logo-white.svg",
+    "method": "GET",
+    "status": 200,
+    "content_type": "image/svg+xml",
+    "post_data": null,
+    "response_preview": null
+  },
+  {
+    "url": "https://etender.uzex.uz/icomoon.3c6ac0cc17dfeaa79b2f.ttf?2o7tbj",
+    "method": "GET",
+    "status": 200,
+    "content_type": "application/x-font-ttf",
+    "post_data": null,
+    "response_preview": null
+  },
+  {
+    "url": "https://apietender.uzex.uz/api/libs/GetCurrentVersion",
+    "method": "GET",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8",
+    "post_data": null,
+    "response_preview": "\"2.0.0\""
+  },
+  {
+    "url": "https://apietender.uzex.uz/api/Libs/GetCurrencies",
+    "method": "GET",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8",
+    "post_data": null,
+    "response_preview": "[{\"id\":106,\"name\":\"Сум\"},{\"id\":20,\"name\":\"Рубль\"},{\"id\":14,\"name\":\"Доллар\"},{\"id\":15,\"name\":\"Евро\"},{\"id\":19,\"name\":\"Юань\"},{\"id\":16,\"name\":\"Фунт стерлингов Великобритании\"}]"
+  },
+  {
+    "url": "https://apietender.uzex.uz/api/Libs/GetRegions",
+    "method": "GET",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8",
+    "post_data": null,
+    "response_preview": "[{\"id\":2,\"name\":\"Андижанская область\"},{\"id\":242,\"name\":\"Бухарская область\"},{\"id\":487,\"name\":\"Джизакская область\"},{\"id\":679,\"name\":\"Кашкадарьинская область\"},{\"id\":1008,\"name\":\"Навоийская область\"},{\"id\":1150,\"name\":\"Наманганская область\"},{\"id\":3049,\"name\":\"Республика Каракалпакстан\"},{\"id\":1413,\"name\":\"Самаркандская область\"},{\"id\":1692,\"name\":\"Сурхандарьинская область\"},{\"id\":1977,\"name\":\"Сырдарьинская область\"},{\"id\":2120,\"name\":\"Ташкентская область\"},{\"id\":2434,\"name\":\"Ферганская область\"},{\"id\":2858,\"name\":\"Хорезмская область\"},{\"id\":2105,\"name\":\"Город Ташкент\"}]"
+  },
+  {
+    "url": "https://apietender.uzex.uz/api/Common/GetPopup",
+    "method": "GET",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8",
+    "post_data": null,
+    "response_preview": "{\"id\":1543,\"date_ini\":\"2026-05-13T20:21:04\",\"text\":\"<p>Chet ellik ishtirokchilar tomonidan tizimga kirishda texnik nosozliklar kuzatilayotganligi sababli 14.05.2026 y. sanasida tugaydigan savdolar 1 ish kuniga uzaytirilganligini ma’lum qilamiz. Keltirilgan noqulayliklar uchun uzr so‘raymiz.</p>\\n <p>В связи с техническими неполадками при входе в систему наблюдаемыми у иностранных участников, торги, завершающиеся 14.05.2026 г. продлены на 1 рабочий день. Приносим извинения за доставленные неудобства.</p>\\n<p>Due to technical malfunctions observed during system entry among foreign participants, the bidding period ending on May 14, 2026, has been extended by 1 working day. We apologize for the inconvenience caused.</p>\\n\",\"headline\":\"Diqqat! \"}"
+  },
+  {
+    "url": "https://apietender.uzex.uz/api/Common/GetNotifications",
+    "method": "POST",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8",
+    "post_data": null,
+    "response_preview": "[]"
+  },
+  {
+    "url": "https://xarid-api-trade.uzex.uz/Lib/GetCategories",
+    "method": "GET",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8",
+    "post_data": null,
+    "response_preview": "[{\"id\":106825,\"name\":\"Продукция и услуги сельского хозяйства и охоты\"},{\"id\":107919,\"name\":\"Продукция лесоводства, лесозаготовок и связанные с этим услуги\"},{\"id\":108163,\"name\":\"Рыба и прочая продукция рыболовства и рыбоводства; услуги, связанные с рыболовством и рыбоводством\"},{\"id\":108595,\"name\":\"Уголь\"},{\"id\":108631,\"name\":\"Нефть сырая и газ природный\"},{\"id\":108768,\"name\":\"Руды металлические\"},{\"id\":108871,\"name\":\"Продукция горнодобывающих производств прочая\"},{\"id\":109090,\"name\":\"Услуги в области добычи полезных ископаемых\"},{\"id\":109122,\"name\":\"Продукты пищевые\"},{\"id\":111223,\"name\":\"Напитки\"},{\"id\":111452,\"name\":\"Изделия табачные\"},{\"id\":111494,\"name\":\"Текстиль и изделия текстильные\"},{\"id\":112246,\"name\":\"Одежда\"},{\"id\":112963,\"name\":\"Кожа и изделия из кожи\"},{\"id\":113218,\"name\":\"Древесина и изделия из дерева и пробки, кроме мебели; изделия из соломки и материалов для плетения\"},{\"id\":113434,\"name\":\"Бумага и изделия из бумаги\"},{\"id\":113765,\"name\":\"Услуги печатные и услуги по копированию звуко- и видеозаписей, а также программных средств\"},{\"id\":113821,\"name\":\"Кокс и нефтепродукты\"},{\"id\":114027,\"name\":\"Вещества химические и продукты химические\"},{\"id\":115349,\"name\":\"Средства лекарственные и материалы, применяемые в медицинских целях\"},{\"id\":117359,\"name\":\"Изделия резиновые и пластмассовые\"},{\"id\":117611,\"name\":\"Продукты минеральные неметаллические прочие\"},{\"id\":118144,\"name\":\"Металлы основные\"},{\"id\":118845,\"name\":\"Изделия металлические готовые, кроме машин и оборудования\"},{\"id\":119460,\"name\":\"Оборудование компьютерное, электронное и оптическое\"},{\"id\":120182,\"name\":\"Оборудование электрическое\"},{\"id\":120735,\"name\":\"Машины и оборудование, не включенные в другие группировки\"},{\"id\":122010,\"name\":\"Средства автотранспортные, прицепы и полуприцепы\"},{\"id\":122283,\"name\":\"Средства транспортные и оборудование, прочие\"},{\"id\":122645,\"name\":\"Мебель\"},{\"id\":122780,\"name\":\"Изделия готовые прочие\"},{\"id\":123457,\"name\":\"Услуги по ремонту и монтажу машин и оборудования\"},{\"id\":123593,\"name\":\"Электроэнергия, газ, пар и кондиционирование воздуха\"},{\"id\":123678,\"name\":\"Вода природная; услуги по очистке воды и водоснабжению\"},{\"id\":123700,\"name\":\"Услуги по водоотведению; шлам сточных вод\"},{\"id\":123719,\"name\":\"Услуги по сбору, обработке и удалению отходов; услуги по утилизации отходов\"},{\"id\":123911,\"name\":\"Услуги по рекультивации и прочие услуги по утилизации отходо\"},{\"id\":123949,\"name\":\"Здания и работы по возведению зданий\"},{\"id\":124049,\"name\":\"Сооружения и строительные работы в области гражданского строительства\"},{\"id\":124278,\"name\":\"Работы строительные специализированные\"},{\"id\":124491,\"name\":\"Услуги по оптовой и розничной торговле и услуги по ремонту автотранспортных средств и мотоциклов\"},{\"id\":124577,\"name\":\"Услуги по оптовой торговле, кроме оптовой торговли автотранспортными средствами и мотоциклами\"},{\"id\":124970,\"name\":\"Услуги по розничной торговле, кроме розничной торговли автотранспортными средствами и мотоциклами\"},{\"id\":125374,\"name\":\"Ус"
+  },
+  {
+    "url": "https://etender.uzex.uz/fa-solid-900.f6121be597a72928f54e.woff2",
+    "method": "GET",
+    "status": 200,
+    "content_type": "font/woff2",
+    "post_data": null,
+    "response_preview": null
+  },
+  {
+    "url": "https://etender.uzex.uz/Montserrat-Bold.a79b68fcda60ce8f337f.woff",
+    "method": "GET",
+    "status": 200,
+    "content_type": "application/font-woff",
+    "post_data": null,
+    "response_preview": null
+  },
+  {
+    "url": "https://apietender.uzex.uz/api/common/TradeList",
+    "method": "POST",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8",
+    "post_data": "{\"TypeId\":1,\"From\":1,\"To\":20,\"System_Id\":0}",
+    "response_preview": "[{\"rn\":1,\"id\":481569,\"display_no\":\"26120012481569\",\"total_count\":614,\"name\":\"Pelargon kislotasi (C8H17COOH)/ Пеларгоновая кислота (C8H17COOH)/ Pelargonic acid (C8H17COOH)\",\"start_date\":\"2026-04-21T15:36:01\",\"end_date\":\"2026-05-15T08:02:05\",\"clarific_date\":\"2026-05-15T08:02:05\",\"cost\":520615.2,\"seller_name\":\"\\\"Shurtan Gaz Kimyo Majmuasi\\\" МЧЖ\",\"seller_tin\":\"203195074\",\"region_name\":\"Qashqadaryo viloyati\",\"district_name\":\"G‘uzor tumani\",\"seller_id\":22420,\"category_name\":null,\"currency_id\":14,\"currency_name\":\"Доллар США\",\"currency_code123\":\"840\",\"currency_codeabc\":\"USD\"},{\"rn\":2,\"id\":484004,\"display_no\":\"26120012484004\",\"total_count\":614,\"name\":\"Yoqilg'i tarqatuvchi kolonka/ Топливораздаточная колонка\",\"start_date\":\"2026-04-30T08:10:23\",\"end_date\":\"2026-05-15T08:10:23\",\"clarific_date\":\"2026-05-15T08:10:23\",\"cost\":45000000.0,\"seller_name\":\"\\\"Shurtan Gaz Kimyo Majmuasi\\\" МЧЖ\",\"seller_tin\":\"203195074\",\"region_name\":\"Qashqadaryo viloyati\",\"district_name\":\"G‘uzor tumani\",\"seller_id\":22420,\"category_name\":null,\"currency_id\":106,\"currency_name\":\"Узбекский сум\",\"currency_code123\":\"860\",\"currency_codeabc\":\"UZS\"},{\"rn\":3,\"id\":484329,\"display_no\":\"26110012484329\",\"total_count\":614,\"name\":\"Экскаватор ижара хизмати\",\"start_date\":\"2026-05-06T08:12:01\",\"end_date\":\"2026-05-15T08:12:01\",\"clarific_date\":\"2026-05-15T08:12:01\",\"cost\":200000000.0,\"seller_name\":\"Беруний тумани Ободонлаштириш бошкармаси\",\"seller_tin\":\"204710460\",\"region_name\":\"Qoraqalpog`iston Respublikasi\",\"district_name\":\"Beruniy tumani\",\"seller_id\":108821,\"category_name\":null,\"currency_id\":106,\"currency_name\":\"Узбекский сум\",\"currency_code123\":\"860\",\"currency_codeabc\":\"UZS\"},{\"rn\":4,\"id\":484327,\"display_no\":\"26110012484327\",\"total_count\":614,\"name\":\"Погрузчик ижара хизмати\",\"start_date\":\"2026-05-06T08:12:12\",\"end_date\":\"2026-05-15T08:12:12\",\"clarific_date\":\"2026-05-15T08:12:12\",\"cost\":200000000.0,\"seller_name\":\"Беруний тумани Ободонлаштириш бошкармаси\",\"seller_tin\":\"204710460\",\"region_name\":\"Qoraqalpog`iston Respublikasi\",\"district_name\":\"Beruniy tumani\",\"seller_id\":108821,\"category_name\":null,\"currency_id\":106,\"currency_name\":\"Узбекский сум\",\"currency_code123\":\"860\",\"currency_codeabc\":\"UZS\"},{\"rn\":5,\"id\":484325,\"display_no\":\"26110012484325\",\"total_count\":614,\"name\":\"Юк ташиш хизмати (ШПС)\",\"start_date\":\"2026-05-06T08:12:24\",\"end_date\":\"2026-05-15T08:12:24\",\"clarific_date\":\"2026-05-15T08:12:24\",\"cost\":249900000.0,\"seller_name\":\"Беруний тумани Ободонлаштириш бошкармаси\",\"seller_tin\":\"204710460\",\"region_name\":\"Qoraqalpog`iston Respublikasi\",\"district_name\":\"Beruniy tumani\",\"seller_id\":108821,\"category_name\":null,\"currency_id\":106,\"currency_name\":\"Узбекский сум\",\"currency_code123\":\"860\",\"currency_codeabc\":\"UZS\"},{\"rn\":6,\"id\":484312,\"display_no\":\"26110012484312\",\"total_count\":614,\"name\":\"Юк ташиш хизмати (ШПС)\",\"start_date\":\"2026-05-06T08:12:35\",\"end_date\":\"2026-05-15T08:12:35\",\"clarific_date\":\"2026-05-15T08:12:35\",\"cost\":149940000.0,\"seller_name\":\"Беруний тумани Ободонлаштириш бошкармаси\",\"seller_tin\":\"20"
+  },
+  {
+    "url": "https://etender.uzex.uz/Montserrat-Medium.d194e50992ca40d4752c.woff",
+    "method": "GET",
+    "status": 200,
+    "content_type": "application/font-woff",
+    "post_data": null,
+    "response_preview": null
+  },
+  {
+    "url": "https://node-ya-5.jivosite.com/widget/status/561952/S4kF7dCcRe?rnd=0.8053840416365116",
+    "method": "GET",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8",
+    "post_data": null,
+    "response_preview": "{\"premium\":true,\"maintenance\":false,\"config_updated_ts\":1747810933,\"agents\":[]}"
+  },
+  {
+    "url": "https://etender.uzex.uz/Montserrat-SemiBold.3d2d13853665147fb8c2.woff",
+    "method": "GET",
+    "status": 200,
+    "content_type": "application/font-woff",
+    "post_data": null,
+    "response_preview": null
+  },
+  {
+    "url": "https://apietender.uzex.uz/api/Libs/GetCurrencies",
+    "method": "GET",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8",
+    "post_data": null,
+    "response_preview": "[{\"id\":106,\"name\":\"Сум\"},{\"id\":20,\"name\":\"Рубль\"},{\"id\":14,\"name\":\"Доллар\"},{\"id\":15,\"name\":\"Евро\"},{\"id\":19,\"name\":\"Юань\"},{\"id\":16,\"name\":\"Фунт стерлингов Великобритании\"}]"
+  },
+  {
+    "url": "https://apietender.uzex.uz/api/Libs/GetRegions",
+    "method": "GET",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8",
+    "post_data": null,
+    "response_preview": "[{\"id\":2,\"name\":\"Андижанская область\"},{\"id\":242,\"name\":\"Бухарская область\"},{\"id\":487,\"name\":\"Джизакская область\"},{\"id\":679,\"name\":\"Кашкадарьинская область\"},{\"id\":1008,\"name\":\"Навоийская область\"},{\"id\":1150,\"name\":\"Наманганская область\"},{\"id\":3049,\"name\":\"Республика Каракалпакстан\"},{\"id\":1413,\"name\":\"Самаркандская область\"},{\"id\":1692,\"name\":\"Сурхандарьинская область\"},{\"id\":1977,\"name\":\"Сырдарьинская область\"},{\"id\":2120,\"name\":\"Ташкентская область\"},{\"id\":2434,\"name\":\"Ферганская область\"},{\"id\":2858,\"name\":\"Хорезмская область\"},{\"id\":2105,\"name\":\"Город Ташкент\"}]"
+  },
+  {
+    "url": "https://apietender.uzex.uz/api/Libs/GetCategories",
+    "method": "GET",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8",
+    "post_data": null,
+    "response_preview": "[{\"id\":12,\"name\":\"Аренда\"},{\"id\":75,\"name\":\"Биологически активные добавки\"},{\"id\":2,\"name\":\"Бумага\"},{\"id\":32,\"name\":\"Ветеринарные препараты, материалы, инструменты и оборудования\"},{\"id\":14,\"name\":\"ГСМ\"},{\"id\":19,\"name\":\"Животные\"},{\"id\":15,\"name\":\"Запасные части для транспортных средств\"},{\"id\":25,\"name\":\"Звукозаписывающая техника и оборудование\"},{\"id\":55,\"name\":\"Изделия медицинского назначения\"},{\"id\":3,\"name\":\"Канцелярские товары\"},{\"id\":7,\"name\":\"Компьютерное оборудование, аудио-видео техника, информационные технологии и принадлежности\"},{\"id\":22,\"name\":\"Лабораторные приборы, оборудования и техника\"},{\"id\":4,\"name\":\"Мебель и офисное оборудование\"},{\"id\":33,\"name\":\"Медикаменты\"},{\"id\":67,\"name\":\"Медицинская техника и оборудование\"},{\"id\":18,\"name\":\"Минеральное удобрение\"},{\"id\":16,\"name\":\"Музыкальные инструменты\"},{\"id\":26,\"name\":\"Обязательные платежи\"},{\"id\":5,\"name\":\"Одежда, обувь и постельные принадлежности\"},{\"id\":13,\"name\":\"Основные средства\"},{\"id\":23,\"name\":\"Пестициды и Гербициды\"},{\"id\":28,\"name\":\"Программный продукт\"},{\"id\":1,\"name\":\"Продукты питания\"},{\"id\":24,\"name\":\"Протезно ортопедическое сырьё для стоматологии\"},{\"id\":21,\"name\":\"Протезно-ортопедические изделия и технические средства реабилитации\"},{\"id\":8,\"name\":\"Прочая техника и оборудование\"},{\"id\":70,\"name\":\"Радиосвязное  оборудование и комплектующие\"},{\"id\":11,\"name\":\"Ремонт\"},{\"id\":27,\"name\":\"Содержание и ремонт компьютера и компьютерного оборудования\"},{\"id\":17,\"name\":\"Спортивный инвентарь и оборудования\"},{\"id\":9,\"name\":\"ТМЗ\"},{\"id\":71,\"name\":\"Трубы и фитинги из термопластов\"},{\"id\":10,\"name\":\"Услуги\"},{\"id\":72,\"name\":\"Услуги\"},{\"id\":20,\"name\":\"Цветы и растения\"}]"
+  },
+  {
+    "url": "https://apietender.uzex.uz/api/Common/GetDealStatus",
+    "method": "GET",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8",
+    "post_data": null,
+    "response_preview": "[{\"id\":0,\"name\":\"Протокол сформирован\"},{\"id\":1,\"name\":\"Протокол Утвержден\"},{\"id\":2,\"name\":\"Анулирован\"},{\"id\":6,\"name\":\"Удалено заказчиком\"},{\"id\":7,\"name\":\"Договор расторгнута\"},{\"id\":4,\"name\":\"Отказано поставщиком\"},{\"id\":5,\"name\":\"Принято победителем (Совершен)\"},{\"id\":8,\"name\":\"Выполнен\"},{\"id\":9,\"name\":\"В ожидании подтверждения о выполнении\"},{\"id\":10,\"name\":\"Отказан в подтверждении о выполнении\"},{\"id\":11,\"name\":\"В ожидании акцепта\"},{\"id\":12,\"name\":\"Отказано заказчиком\"},{\"id\":14,\"name\":\"Протокол сформирован\"},{\"id\":13,\"name\":\"Отказано в принятии акцепта\"},{\"id\":15,\"name\":\"Приостановлен комиссией по рассмотрению жалоб\"}]"
+  },
+  {
+    "url": "https://apietender.uzex.uz/api/common/DealsList",
+    "method": "POST",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8",
+    "post_data": "{\"From\":1,\"To\":20,\"currencyId\":null,\"System_Id\":0}",
+    "response_preview": "[{\"deal_date\":\"2026-05-14T12:05:06\",\"deal_id\":169208,\"trade_id\":483778,\"display_no\":\"26110012483778\",\"start_cost\":120000000.0,\"deal_cost\":56000000.0,\"currency_name\":\"Сум\",\"participants_count\":4,\"customer_name\":\"Ўзб.Рес.Согликни саклаш вазирлиги хузуридаги Фармасевтика тармогини ривожлантириш агентлигининг Зарур амалиётлар маркази ДМ\",\"customer_type_name\":\"Budget buyurtmachi\",\"customer_inn\":\"308766647\",\"provider_name\":\"HLB TASHKENT MCHJ АУДИТ.ОРГАН\",\"provider_inn\":\"203674293\",\"deal_status_name\":\"Bayonnoma shakllantirilgan\",\"proposal_status_name\":\"Протокол сформирован\",\"deal_contract_date\":null,\"deal_contract_status_name\":\"Biriktirilmagan\",\"deal_contract_kazna_status_name\":\"Yuborilmadi\",\"deal_contract_kazna_status_id\":0,\"category_name\":\"Услуга по проведению внешнего аудита\",\"is_local_manufacturs\":false,\"beneficiary\":null,\"founder\":null,\"can_comment\":0,\"contract_file_name\":null,\"contract_file_path\":null,\"contract_file_ext\":null,\"contract_file_sizes\":null,\"contract_file_date\":null,\"additional_protocol_file_name\":null,\"additional_protocol_file_path\":null,\"additional_protocol_file_ext\":null,\"additional_protocol_file_sizes\":null,\"additional_protocol_file_date\":null,\"rn\":1,\"total_count\":155660},{\"deal_date\":\"2026-05-14T11:52:30\",\"deal_id\":169207,\"trade_id\":483921,\"display_no\":\"26110012483921\",\"start_cost\":313035381.0,\"deal_cost\":308068881.0,\"currency_name\":\"Сум\",\"participants_count\":2,\"customer_name\":\"Карши давлат университети академик лицейи\",\"customer_type_name\":\"Budget buyurtmachi\",\"customer_inn\":\"205219681\",\"provider_name\":\"ALIBEK ZOKIROVICH MCHJ\",\"provider_inn\":\"308424676\",\"deal_status_name\":\"Bayonnoma shakllantirilgan\",\"proposal_status_name\":\"Протокол сформирован\",\"deal_contract_date\":null,\"deal_contract_status_name\":\"Biriktirilmagan\",\"deal_contract_kazna_status_name\":\"Yuborilmadi\",\"deal_contract_kazna_status_id\":0,\"category_name\":\"Eng yaxshi taklifni tanlab olish\",\"is_local_manufacturs\":false,\"beneficiary\":null,\"founder\":null,\"can_comment\":0,\"contract_file_name\":null,\"contract_file_path\":null,\"contract_file_ext\":null,\"contract_file_sizes\":null,\"contract_file_date\":null,\"additional_protocol_file_name\":null,\"additional_protocol_file_path\":null,\"additional_protocol_file_ext\":null,\"additional_protocol_file_sizes\":null,\"additional_protocol_file_date\":null,\"rn\":2,\"total_count\":155660},{\"deal_date\":\"2026-05-14T11:44:14\",\"deal_id\":169206,\"trade_id\":483870,\"display_no\":\"26110012483870\",\"start_cost\":40000000.0,\"deal_cost\":37184000.0,\"currency_name\":\"Сум\",\"participants_count\":2,\"customer_name\":\"Управление внутренних дел Ферганской области\",\"customer_type_name\":\"Budget buyurtmachi\",\"customer_inn\":\"201152350\",\"provider_name\":\"APOLLON INJINIRING MCHJ\",\"provider_inn\":\"305735814\",\"deal_status_name\":\"Bayonnoma shakllantirilgan\",\"proposal_status_name\":\"Протокол сформирован\",\"deal_contract_date\":null,\"deal_contract_status_name\":\"Biriktirilmagan\",\"deal_contract_kazna_status_name\":\"Yuborilmadi\",\"deal_contract_kazna_status_id\":0,\"category_name\":\"Маргилон шахар ИИБ маъм"
+  },
+  {
+    "url": "https://etender.uzex.uz/calendar.0bf86dc1b58214f19705.svg",
+    "method": "GET",
+    "status": 200,
+    "content_type": "image/svg+xml",
+    "post_data": null,
+    "response_preview": null
+  },
+  {
+    "url": "https://apietender.uzex.uz/api/Libs/GetDistricts?regionId=1977",
+    "method": "GET",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8",
+    "post_data": null,
+    "response_preview": "[{\"id\":1979,\"name\":\"Oqoltin tumani\"},{\"id\":1988,\"name\":\" Boyovut tumani\"},{\"id\":2098,\"name\":\"Guliston\"},{\"id\":2021,\"name\":\"Guliston tumani\"},{\"id\":3323,\"name\":\"Мехнатабад tumani\"},{\"id\":2048,\"name\":\"Mirzaobod tumani\"},{\"id\":2007,\"name\":\"Sayxunobod tumani\"},{\"id\":2038,\"name\":\"Sardoba tumani\"},{\"id\":2062,\"name\":\"Sirdaryo tumani\"},{\"id\":2081,\"name\":\"Xovos tumani\"},{\"id\":3322,\"name\":\"Sharof Rashidov tumani\"},{\"id\":2103,\"name\":\"Shirin \"},{\"id\":2104,\"name\":\"Yangiyer \"},{\"id\":3324,\"name\":\"Sirdaryo shahri\"}]"
+  },
+  {
+    "url": "https://apietender.uzex.uz/api/Libs/GetDistricts?regionId=11",
+    "method": "GET",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8",
+    "post_data": null,
+    "response_preview": "[]"
+  },
+  {
+    "url": "https://apietender.uzex.uz/api/common/DealsList",
+    "method": "POST",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8",
+    "post_data": "{\"From\":1,\"To\":20,\"currencyId\":20,\"System_Id\":0,\"Keyword\":\"kommutator\",\"PriceMin\":\"2\",\"PriceMax\":\"23\",\"RegionId\":\"1977\",\"DistrictId\":\"3324\",\"StatusId\":\"11\",\"CustomerTin\":\"3434\",\"customerName\":\"34dfv\",\"ProviderTin\":\"34343\",\"providerName\":\"2434\",\"DeadlineStart\":\"2026-05-04T07:08:01.000Z\",\"DeadlineEnd\":\"2026-05-04T07:08:01.000Z\"}",
+    "response_preview": "[]"
+  },
+  {
+    "url": "https://apietender.uzex.uz/api/common/DealsList",
+    "method": "POST",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8",
+    "post_data": "{\"From\":1,\"To\":20,\"currencyId\":null,\"System_Id\":0}",
+    "response_preview": "[{\"deal_date\":\"2026-05-14T12:05:06\",\"deal_id\":169208,\"trade_id\":483778,\"display_no\":\"26110012483778\",\"start_cost\":120000000.0,\"deal_cost\":56000000.0,\"currency_name\":\"Сум\",\"participants_count\":4,\"customer_name\":\"Ўзб.Рес.Согликни саклаш вазирлиги хузуридаги Фармасевтика тармогини ривожлантириш агентлигининг Зарур амалиётлар маркази ДМ\",\"customer_type_name\":\"Budget buyurtmachi\",\"customer_inn\":\"308766647\",\"provider_name\":\"HLB TASHKENT MCHJ АУДИТ.ОРГАН\",\"provider_inn\":\"203674293\",\"deal_status_name\":\"Bayonnoma shakllantirilgan\",\"proposal_status_name\":\"Протокол сформирован\",\"deal_contract_date\":null,\"deal_contract_status_name\":\"Biriktirilmagan\",\"deal_contract_kazna_status_name\":\"Yuborilmadi\",\"deal_contract_kazna_status_id\":0,\"category_name\":\"Услуга по проведению внешнего аудита\",\"is_local_manufacturs\":false,\"beneficiary\":null,\"founder\":null,\"can_comment\":0,\"contract_file_name\":null,\"contract_file_path\":null,\"contract_file_ext\":null,\"contract_file_sizes\":null,\"contract_file_date\":null,\"additional_protocol_file_name\":null,\"additional_protocol_file_path\":null,\"additional_protocol_file_ext\":null,\"additional_protocol_file_sizes\":null,\"additional_protocol_file_date\":null,\"rn\":1,\"total_count\":155660},{\"deal_date\":\"2026-05-14T11:52:30\",\"deal_id\":169207,\"trade_id\":483921,\"display_no\":\"26110012483921\",\"start_cost\":313035381.0,\"deal_cost\":308068881.0,\"currency_name\":\"Сум\",\"participants_count\":2,\"customer_name\":\"Карши давлат университети академик лицейи\",\"customer_type_name\":\"Budget buyurtmachi\",\"customer_inn\":\"205219681\",\"provider_name\":\"ALIBEK ZOKIROVICH MCHJ\",\"provider_inn\":\"308424676\",\"deal_status_name\":\"Bayonnoma shakllantirilgan\",\"proposal_status_name\":\"Протокол сформирован\",\"deal_contract_date\":null,\"deal_contract_status_name\":\"Biriktirilmagan\",\"deal_contract_kazna_status_name\":\"Yuborilmadi\",\"deal_contract_kazna_status_id\":0,\"category_name\":\"Eng yaxshi taklifni tanlab olish\",\"is_local_manufacturs\":false,\"beneficiary\":null,\"founder\":null,\"can_comment\":0,\"contract_file_name\":null,\"contract_file_path\":null,\"contract_file_ext\":null,\"contract_file_sizes\":null,\"contract_file_date\":null,\"additional_protocol_file_name\":null,\"additional_protocol_file_path\":null,\"additional_protocol_file_ext\":null,\"additional_protocol_file_sizes\":null,\"additional_protocol_file_date\":null,\"rn\":2,\"total_count\":155660},{\"deal_date\":\"2026-05-14T11:44:14\",\"deal_id\":169206,\"trade_id\":483870,\"display_no\":\"26110012483870\",\"start_cost\":40000000.0,\"deal_cost\":37184000.0,\"currency_name\":\"Сум\",\"participants_count\":2,\"customer_name\":\"Управление внутренних дел Ферганской области\",\"customer_type_name\":\"Budget buyurtmachi\",\"customer_inn\":\"201152350\",\"provider_name\":\"APOLLON INJINIRING MCHJ\",\"provider_inn\":\"305735814\",\"deal_status_name\":\"Bayonnoma shakllantirilgan\",\"proposal_status_name\":\"Протокол сформирован\",\"deal_contract_date\":null,\"deal_contract_status_name\":\"Biriktirilmagan\",\"deal_contract_kazna_status_name\":\"Yuborilmadi\",\"deal_contract_kazna_status_id\":0,\"category_name\":\"Маргилон шахар ИИБ маъм"
+  },
+  {
+    "url": "https://etender.uzex.uz/Montserrat-Italic.74f69ef5906c6a5b0745.woff",
+    "method": "GET",
+    "status": 200,
+    "content_type": "application/font-woff",
+    "post_data": null,
+    "response_preview": null
+  },
+  {
+    "url": "https://etender.uzex.uz/Montserrat-MediumItalic.ad732b72a16aa8d53dc9.woff",
+    "method": "GET",
+    "status": 200,
+    "content_type": "application/font-woff",
+    "post_data": null,
+    "response_preview": null
+  },
+  {
+    "url": "https://apietender.uzex.uz/api/Protocol/DownloadPDF/",
+    "method": "POST",
+    "status": 200,
+    "content_type": "application/pdf",
+    "post_data": "{\"keyword\":\"b/YKzoah5GgjLHdPzULoV8V9Z3xZlguFihvEUG1tOzwo0vSSRT4iSk8aXtBCu0I3szJgTrkPTA4X41hpiDPkTZPpKKGyT6xAP0/EavyMkogIpHVTObTu5y+7FfHacJ/H9mLxRY+o1+bk00XObN2XKhbji+kk2JB5iOAGu7FK9p0=\",\"lang\":2}",
+    "response_preview": null
+  },
+  {
+    "url": "https://apietender.uzex.uz/api/Common/GetCriteriaFiles/483990",
+    "method": "GET",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8",
+    "post_data": null,
+    "response_preview": "[{\"field_id\":2616557,\"name\":\"Ишларни бажариш ёки хизматларни кўрсатиш учун тегишли зарурий малакали ёки шартнома асосида ёлланадиган мутахассислар мавжудлигига қўйиладиган талаблар\",\"bids\":[{\"bid_id\":695271,\"provider_name\":\"KONIZAR STROY MCHJ\",\"field_id\":2616557,\"name\":null,\"path\":null},{\"bid_id\":694869,\"provider_name\":\"FAR VODIY MARVARID QURILISH MCHJ\",\"field_id\":2616557,\"name\":null,\"path\":null},{\"bid_id\":694863,\"provider_name\":\"\\\"UYG`ONISH DAVRI BINOLARI\\\" MCHJ\",\"field_id\":2616557,\"name\":null,\"path\":null}]},{\"field_id\":2616556,\"name\":\"Ишлар ва хизматларда суғурталашга қўйиладиган талаблар \",\"bids\":[{\"bid_id\":695271,\"provider_name\":\"KONIZAR STROY MCHJ\",\"field_id\":2616556,\"name\":null,\"path\":null},{\"bid_id\":694869,\"provider_name\":\"FAR VODIY MARVARID QURILISH MCHJ\",\"field_id\":2616556,\"name\":null,\"path\":null},{\"bid_id\":694863,\"provider_name\":\"\\\"UYG`ONISH DAVRI BINOLARI\\\" MCHJ\",\"field_id\":2616556,\"name\":null,\"path\":null}]},{\"field_id\":2616555,\"name\":\"Ишларни бажариш ва хизматларни кўрсатиш шартлари: Техник топшириқда назарда тутилган хажм, техник параметрлар ва талабларига мувофиқлиги\",\"bids\":[{\"bid_id\":695271,\"provider_name\":\"KONIZAR STROY MCHJ\",\"field_id\":2616555,\"name\":null,\"path\":null},{\"bid_id\":694869,\"provider_name\":\"FAR VODIY MARVARID QURILISH MCHJ\",\"field_id\":2616555,\"name\":null,\"path\":null},{\"bid_id\":694863,\"provider_name\":\"\\\"UYG`ONISH DAVRI BINOLARI\\\" MCHJ\",\"field_id\":2616555,\"name\":null,\"path\":null}]},{\"field_id\":2616554,\"name\":\"Ишларни бажариш ва хизматларни кўрсатиш шартлари: Техник топшириқда назарда тутилган хажм, техник параметрлар ва талабларига мувофиқлиги\",\"bids\":[{\"bid_id\":695271,\"provider_name\":\"KONIZAR STROY MCHJ\",\"field_id\":2616554,\"name\":null,\"path\":null},{\"bid_id\":694869,\"provider_name\":\"FAR VODIY MARVARID QURILISH MCHJ\",\"field_id\":2616554,\"name\":null,\"path\":null},{\"bid_id\":694863,\"provider_name\":\"\\\"UYG`ONISH DAVRI BINOLARI\\\" MCHJ\",\"field_id\":2616554,\"name\":null,\"path\":null}]}]"
+  }
+]

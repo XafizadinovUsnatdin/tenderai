@@ -1,0 +1,147 @@
+[
+  {
+    "url": "https://code.jivosite.com/widget.js",
+    "status": 200,
+    "content_type": "application/javascript"
+  },
+  {
+    "url": "https://code.jivosite.com/script/widget/config/S4kF7dCcRe",
+    "status": 200,
+    "content_type": "application/x-javascript"
+  },
+  {
+    "url": "https://node-ya-5.jivosite.com/widget/status/561952/S4kF7dCcRe?rnd=0.9740195894527709",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8"
+  },
+  {
+    "url": "https://mc.yandex.ru/watch/96874542/1?wmode=7&page-url=https%3A%2F%2Fxarid.uzex.uz%2Fshop%2Fproducts-list%2Feshop&charset=utf-8&uah=chu%0A%22Chromium%22%3Bv%3D%22147%22%2C%22Not.A%2FBrand%22%3Bv%3D%228%22%0Acha%0Ax86%0Achb%0A64%0Achf%0A147.0.7727.15%0Achl%0A%22Chromium%22%3Bv%3D%22147.0.7727.15%22%2C%22Not.A%2FBrand%22%3Bv%3D%228.0.0.0%22%0Achm%0A%3F0%0Achp%0AWindows%0Achv%0A10.0&browser-info=pv%3A1%3Avf%3Apudvqnsfv6ib5kxc1gvz1plajlgbj%3Afu%3A0%3Aen%3Autf-8%3Ala%3Aru-RU%3Av%3A2500%3Acn%3A1%3Adp%3A0%3Als%3A321199959246%3Ahid%3A393313754%3Az%3A300%3Ai%3A20260513235806%3Aet%3A1778698687%3Ac%3A1%3Arn%3A426805099%3Arqn%3A1%3Au%3A1778698687657349510%3Aw%3A1280x720%3As%3A1280x720x32%3Ask%3A1.0000000149011612%3Awv%3A2%3Ads%3A17%2C71%2C50%2C1%2C1%2C0%2C%2C674%2C%2C%2C%2C%2C%3Aco%3A0%3Ahdl%3A1%3Acpf%3A1%3Ans%3A1778698683758%3Arqnl%3A1%3Ast%3A1778698687%3At%3ADAVLAT%20XARIDLARI%20MAXSUS%20AXBOROT%20PORTALI&t=clt%282058%29gdpr%2814%29clc%280-0-0%29rqnt%281%29aw%281%29rcm%281%29cdl%28na%29eco%2842009088%29ti%281%29&redirnss=1",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8"
+  },
+  {
+    "url": "https://xarid-api-trade.uzex.uz/Info/GetPopup",
+    "status": 204,
+    "content_type": ""
+  },
+  {
+    "url": "https://xarid-api-trade.uzex.uz/Info/GetCurrentIp",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8"
+  },
+  {
+    "url": "https://xarid-api-trade.uzex.uz/Info/GetCurrentIp",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8"
+  },
+  {
+    "url": "https://xarid-api-shop.uzex.uz/Common/GetOffersList",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8"
+  },
+  {
+    "url": "https://xarid-api-trade.uzex.uz/Lib/GetRegions",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8"
+  },
+  {
+    "url": "https://xarid-api-trade.uzex.uz/Lib/GetCategories",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8"
+  },
+  {
+    "url": "https://xarid-api-trade.uzex.uz/Lib/GetCountries",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8"
+  },
+  {
+    "url": "https://xarid-api-trade.uzex.uz/Common/GetNews",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8"
+  },
+  {
+    "url": "https://xarid-api-trade.uzex.uz/Common/DownloadFile?path=files/user-files/2026/2/14/5e4ebda1-c04c-4940-a08b-1cc3b802025d.jpg",
+    "status": 200,
+    "content_type": "image/jpeg"
+  },
+  {
+    "url": "https://xarid-api-trade.uzex.uz/Common/DownloadFile?path=files/user-files/2026/2/14/c67cf169-b66a-470f-8cd3-290e96f79446.jpg",
+    "status": 200,
+    "content_type": "image/jpeg"
+  },
+  {
+    "url": "https://xarid-api-trade.uzex.uz/Common/DownloadFile?path=files/user-files/2026/2/14/d4d55f98-4001-491f-9397-ed0c1930a2d3.jpg",
+    "status": 200,
+    "content_type": "image/jpeg"
+  },
+  {
+    "url": "https://xarid-api-trade.uzex.uz/Common/DownloadFile?path=files/user-files/2026/4/24/70a5f6d5-c757-4061-8341-4e733c9e5da0.png",
+    "status": 200,
+    "content_type": "image/png"
+  },
+  {
+    "url": "https://xarid-api-trade.uzex.uz/Common/DownloadFile?path=files/user-files/2026/2/14/9cd2256a-ee0a-49e7-93b1-e260061b6f59.png",
+    "status": 200,
+    "content_type": "image/png"
+  },
+  {
+    "url": "https://xarid-api-trade.uzex.uz/Common/DownloadFile?path=files/user-files/2026/5/13/25f839c8-2bcc-4d67-b441-cb97672bbdd5.jpg",
+    "status": 200,
+    "content_type": "image/jpeg"
+  },
+  {
+    "url": "https://xarid-api-trade.uzex.uz/Common/DownloadFile?path=files/user-files/2026/2/14/e8d5feae-beea-42f6-a8da-9cdd9344fbe4.jpg",
+    "status": 200,
+    "content_type": "image/jpeg"
+  },
+  {
+    "url": "https://xarid-api-trade.uzex.uz/Common/DownloadFile?path=files/user-files/2026/5/13/3ad02277-a56b-4f20-b93d-428f4689e63c.jpg",
+    "status": 200,
+    "content_type": "image/jpeg"
+  },
+  {
+    "url": "https://xarid-api-trade.uzex.uz/Common/DownloadFile?path=files/user-files/2026/2/14/9142d672-fe23-4dac-9491-5ad17e567143.jpg",
+    "status": 200,
+    "content_type": "image/jpeg"
+  },
+  {
+    "url": "https://xarid-api-trade.uzex.uz/Common/DownloadFile?path=files/user-files/2026/5/13/272b0f12-ae2a-4e44-8c90-0162336f6fb6.jpg",
+    "status": 200,
+    "content_type": "image/jpeg"
+  },
+  {
+    "url": "https://xarid-api-trade.uzex.uz/Common/DownloadFile?path=files/user-files/2026/2/14/4eeff655-8e40-41d5-9aca-a1629a490c16.jpg",
+    "status": 200,
+    "content_type": "image/jpeg"
+  },
+  {
+    "url": "https://xarid-api-trade.uzex.uz/Common/DownloadFile?path=files/user-files/2026/2/14/1daea47b-84d3-4e4d-9fd0-70db225e57f0.png",
+    "status": 200,
+    "content_type": "image/png"
+  },
+  {
+    "url": "https://xarid-api-trade.uzex.uz/Common/DownloadFile?path=files/user-files/2025/9/21/47654cb5-c7dc-4ac1-a9bb-fedc96a8db0c.jpg",
+    "status": 200,
+    "content_type": "image/jpeg"
+  },
+  {
+    "url": "https://xarid-api-trade.uzex.uz/Common/DownloadFile?path=files/user-files/2026/5/13/8e7ba280-6e41-42e6-aea7-c8e46c89344b.png",
+    "status": 200,
+    "content_type": "image/png"
+  },
+  {
+    "url": "https://xarid-api-trade.uzex.uz/Common/DownloadFile?path=files/user-files/2025/4/17/823acad2-625c-41d8-ad66-88cd48f3d341.jpg",
+    "status": 200,
+    "content_type": "image/jpeg"
+  },
+  {
+    "url": "https://xarid-api-trade.uzex.uz/Common/DownloadFile?path=files/user-files/2026/5/13/c90761ba-ce91-476a-99f0-dc465a09f50f.png",
+    "status": 200,
+    "content_type": "image/png"
+  },
+  {
+    "url": "https://code.jivosite.com/css/cdddffe/widget.css",
+    "status": 200,
+    "content_type": "text/css"
+  }
+]
