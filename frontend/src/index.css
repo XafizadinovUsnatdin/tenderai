@@ -496,6 +496,17 @@ td {
   min-width: 1100px;
 }
 
+.source-status-table th,
+.source-status-table td {
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.source-status-table th {
+  background: #f8fafc;
+  color: #334155;
+}
+
 .source-cell {
   display: flex;
   flex-direction: column;

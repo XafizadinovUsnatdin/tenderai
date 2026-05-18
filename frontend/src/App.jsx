@@ -1349,28 +1349,43 @@ export default function App() {
           </div>
 
           {result?.source_status && (
-            <div className="summary-grid">
-              {Object.entries(result.source_status).map(([source, info]) => {
-                const status = info?.status || "unknown";
-                const count = info?.count ?? 0;
-                const message = info?.message;
+            <Card className="full">
+              <SectionTitle
+                icon={<Database size={22} />}
+                title="Manbalar holati"
+                subtitle="Har bir tender portali bo‘yicha qisqa natija"
+              />
+              <div className="table-wrap">
+                <table className="source-status-table">
+                  <thead>
+                    <tr>
+                      <th>Manba</th>
+                      <th>Status</th>
+                      <th>Evidence</th>
+                      <th>Xabar</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(result.source_status).map(([source, info]) => {
+                      const status = info?.status || "unknown";
+                      const count = info?.count ?? 0;
+                      const message = info?.message;
 
-                return (
-                  <Card key={source}>
-                    <SectionTitle
-                      icon={<Database size={22} />}
-                      title={source}
-                      subtitle="Manba holati"
-                    />
-                    <div className={`status-badge ${status}`}>{status}</div>
-                    <p className="muted">
-                      Evidence: <b>{count}</b>
-                    </p>
-                    {message && <p className="muted">{message}</p>}
-                  </Card>
-                );
-              })}
-            </div>
+                      return (
+                        <tr key={source}>
+                          <td>{source}</td>
+                          <td>
+                            <span className={`status-badge ${status}`}>{status}</span>
+                          </td>
+                          <td>{count}</td>
+                          <td className="muted">{message || "—"}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
           )}
 
           {activeTab === "result" && (
