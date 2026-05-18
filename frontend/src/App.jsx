@@ -119,6 +119,21 @@ function parseDateInput(value) {
   return date;
 }
 
+function buildEvidenceFileUrl(ev, filePath) {
+  const raw = String(filePath ?? "").trim();
+  if (!raw) return null;
+
+  if (/^https?:\/\//i.test(raw)) return raw;
+
+  const cleanPath = raw.replace(/^\/+/, "");
+  const sourceName = String(ev?.source_name || "");
+
+  if (sourceName === "etender.uzex.uz") return `https://etender.uzex.uz/${cleanPath}`;
+  if (sourceName.startsWith("xarid.uzex.uz")) return `https://xarid.uzex.uz/${cleanPath}`;
+
+  return `/${cleanPath}`;
+}
+
 function evText(ev) {
   return normalizeText(
     [
@@ -332,6 +347,8 @@ function buildSupplierPerformance(evidences) {
         success_deals: 0,
         risky_deals: 0,
         unknown_deals: 0,
+        deal_cost_sum: 0,
+        deal_cost_known: 0,
         unit_sum: 0,
         unit_sum_known: 0,
         single_bidder_deals: 0,
@@ -348,6 +365,11 @@ function buildSupplierPerformance(evidences) {
     if (outcome === "success") item.success_deals += 1;
     else if (outcome === "risky") item.risky_deals += 1;
     else item.unknown_deals += 1;
+
+    if (isFiniteNumber(ev?.deal_cost)) {
+      item.deal_cost_sum += ev.deal_cost;
+      item.deal_cost_known += 1;
+    }
 
     if (isFiniteNumber(ev?.amount)) {
       item.unit_sum += ev.amount;
@@ -634,6 +656,9 @@ function EvidenceTable({ evidences }) {
                   ? "—"
                   : String(ev.participants_count);
 
+              const contractUrl = buildEvidenceFileUrl(ev, ev?.contract_file_path);
+              const protocolUrl = buildEvidenceFileUrl(ev, ev?.additional_protocol_file_path);
+
               return (
                 <tr key={index}>
                   <td className="desc-cell">
@@ -664,13 +689,37 @@ function EvidenceTable({ evidences }) {
                     </div>
                   </td>
                   <td>
-                    {ev?.source_url ? (
-                      <a href={ev.source_url} target="_blank" rel="noreferrer">
-                        Ochish
-                      </a>
-                    ) : (
-                      "—"
-                    )}
+                    <div className="file-row">
+                      {ev?.source_url ? (
+                        <a href={ev.source_url} target="_blank" rel="noreferrer" className="file-open">
+                          Lot
+                        </a>
+                      ) : (
+                        <span className="muted">—</span>
+                      )}
+                      {contractUrl && (
+                        <a
+                          href={contractUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="file-open"
+                          title={ev?.contract_file_name || "Shartnoma fayli"}
+                        >
+                          Shartnoma
+                        </a>
+                      )}
+                      {protocolUrl && (
+                        <a
+                          href={protocolUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="file-open"
+                          title={ev?.additional_protocol_file_name || "Qo‘shimcha bayonnoma"}
+                        >
+                          Protokol
+                        </a>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );
@@ -1019,6 +1068,11 @@ export default function App() {
             <div className="modal-body">
               <div className="stats-grid">
                 <StatCard
+                  label="Bitimlar soni"
+                  value={`${supplierViewer.total_deals} ta`}
+                  hint="Topilgan evidencelar soni"
+                />
+                <StatCard
                   label="Muvaffaqiyatli bitimlar"
                   value={`${supplierViewer.success_deals} ta`}
                   hint="Status bo‘yicha soddalashtirilgan tasnif"
@@ -1027,6 +1081,19 @@ export default function App() {
                   label="Riskli / bekor"
                   value={`${supplierViewer.risky_deals} ta`}
                   hint="Bekor/Rad/Jarima va h.k."
+                />
+                <StatCard
+                  label="Umumiy summa"
+                  value={
+                    supplierViewer.deal_cost_known > 0
+                      ? new Intl.NumberFormat("uz-UZ").format(supplierViewer.deal_cost_sum)
+                      : "—"
+                  }
+                  hint={
+                    supplierViewer.deal_cost_known > 0
+                      ? `${supplierViewer.deal_cost_known} ta bitimda deal_cost bor`
+                      : "deal_cost ko‘rsatilmagan"
+                  }
                 />
                 <StatCard
                   label="Unit (ma’lum)"
@@ -1081,6 +1148,8 @@ export default function App() {
                       const outcomeLabel =
                         outcome === "success" ? "Muvaffaqiyatli" : outcome === "risky" ? "Riskli" : "Noma’lum";
                       const badgeClass = outcome === "success" ? "badge ok" : outcome === "risky" ? "badge bad" : "badge";
+                      const contractUrl = buildEvidenceFileUrl(ev, ev?.contract_file_path);
+                      const protocolUrl = buildEvidenceFileUrl(ev, ev?.additional_protocol_file_path);
 
                       return (
                         <tr key={`${ev?.lot_display_no || "lot"}_${idx}`}>
@@ -1096,13 +1165,37 @@ export default function App() {
                             </div>
                           </td>
                           <td>
-                            {ev?.source_url ? (
-                              <a href={ev.source_url} target="_blank" rel="noreferrer">
-                                Ochish
-                              </a>
-                            ) : (
-                              "—"
-                            )}
+                            <div className="file-row">
+                              {ev?.source_url ? (
+                                <a href={ev.source_url} target="_blank" rel="noreferrer" className="file-open">
+                                  Lot
+                                </a>
+                              ) : (
+                                <span className="muted">—</span>
+                              )}
+                              {contractUrl && (
+                                <a
+                                  href={contractUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="file-open"
+                                  title={ev?.contract_file_name || "Shartnoma fayli"}
+                                >
+                                  Shartnoma
+                                </a>
+                              )}
+                              {protocolUrl && (
+                                <a
+                                  href={protocolUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="file-open"
+                                  title={ev?.additional_protocol_file_name || "Qo‘shimcha bayonnoma"}
+                                >
+                                  Protokol
+                                </a>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );
@@ -1287,41 +1380,32 @@ export default function App() {
           </div>
 
           {result?.source_status && (
-            <Card className="full">
+            <Card className="full compact-card">
               <SectionTitle
-                icon={<Database size={22} />}
+                icon={<Database size={18} />}
                 title="Manbalar holati"
-                subtitle="Har bir tender portali bo‘yicha qisqa natija"
               />
-              <div className="table-wrap">
-                <table className="source-status-table">
-                  <thead>
-                    <tr>
-                      <th>Manba</th>
-                      <th>Status</th>
-                      <th>Evidence</th>
-                      <th>Xabar</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Object.entries(result.source_status).map(([source, info]) => {
-                      const status = info?.status || "unknown";
-                      const count = info?.count ?? 0;
-                      const message = info?.message;
+              <div className="source-status-grid">
+                {Object.entries(result.source_status).map(([source, info]) => {
+                  const status = info?.status || "unknown";
+                  const count = info?.count ?? 0;
+                  const message = String(info?.message || "").trim();
+                  const messageShort =
+                    message.length > 60 ? `${message.slice(0, 60).trim()}…` : message;
 
-                      return (
-                        <tr key={source}>
-                          <td>{source}</td>
-                          <td>
-                            <span className={`status-badge ${status}`}>{status}</span>
-                          </td>
-                          <td>{count}</td>
-                          <td className="muted">{message || "—"}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                  return (
+                    <div key={source} className="source-status-item" title={message || undefined}>
+                      <div className="source-status-top">
+                        <span className="source-status-name">{source}</span>
+                        <span className={`status-badge ${status}`}>{status}</span>
+                      </div>
+                      <div className="source-status-bottom">
+                        <span className="muted tiny">Evidence: {count}</span>
+                        {message ? <span className="muted tiny">{messageShort}</span> : <span className="muted tiny">—</span>}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </Card>
           )}
@@ -1435,29 +1519,9 @@ export default function App() {
                     <p className="muted">Ma’lumot yo‘q</p>
                   )}
                 </Card>
-
-                <Card className="full">
-                  <SectionTitle
-                    icon={<CheckCircle2 size={22} />}
-                    title="Nega shu mahsulot tanlandi?"
-                    subtitle="Candidate tanlash sababi"
-                  />
-                  <p>
-                    {result.candidate_selection_reason ||
-                      selected?.selection_reason ||
-                      "Ma’lumot yo‘q"}
-                  </p>
-                </Card>
               </div>
 
-              <Card className="full">
-                <SectionTitle
-                  icon={<Database size={22} />}
-                  title="Tender parametrlari (jadval)"
-                  subtitle="Har bir lot bo‘yicha yig‘ilgan parametrlar (ketma-ket)"
-                />
-                <EvidenceTable evidences={evidences} />
-              </Card>
+              <TechnicalTask task={result.technical_task} />
 
               {result.validation_warnings?.length > 0 && (
                 <Card className="warning-card">
@@ -1474,7 +1538,14 @@ export default function App() {
                 </Card>
               )}
 
-              <TechnicalTask task={result.technical_task} />
+              <Card className="full">
+                <SectionTitle
+                  icon={<Database size={22} />}
+                  title="Tender parametrlari (jadval)"
+                  subtitle="Har bir lot bo‘yicha yig‘ilgan parametrlar (ketma-ket)"
+                />
+                <EvidenceTable evidences={evidences} />
+              </Card>
 
               {auditFlags.participantsOne.length > 0 && (
                 <Card className="warning-card full">
@@ -1553,7 +1624,8 @@ export default function App() {
                           <th>Riskli</th>
                           <th>Bitimlar</th>
                           <th>Yakka</th>
-                          <th>Unit (ma’lum)</th>
+                          <th>Unit soni</th>
+                          <th>Umumiy summa</th>
                           <th>Asosiy kategoriya</th>
                           <th>Risk</th>
                           <th>Reyting</th>
@@ -1592,6 +1664,11 @@ export default function App() {
                               <td>{row.single_bidder_deals || 0}</td>
                               <td>
                                 {row.unit_sum_known > 0 ? new Intl.NumberFormat("uz-UZ").format(row.unit_sum) : "—"}
+                              </td>
+                              <td>
+                                {row.deal_cost_known > 0
+                                  ? new Intl.NumberFormat("uz-UZ").format(row.deal_cost_sum)
+                                  : "—"}
                               </td>
                               <td className="muted" title={row.main_category || ""}>
                                 {row.main_category ? String(row.main_category).slice(0, 56) : "—"}

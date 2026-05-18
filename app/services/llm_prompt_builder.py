@@ -102,6 +102,11 @@ QOIDALAR:
 13. Qatnashchilar soni, tender cheklanganligi, firibgarlik yoki raqobat kamaygani haqida dalil bo‘lmasa, bunday xulosa yozma.
 14. Yetkazib berish muddati evidence ichida bo‘lmasa, aniq kun soni yozma.
 15. Texnik topshiriq adolatli, aniq va raqobatni cheklamaydigan bo‘lsin.
+16. Ekonom/Standart/Premium variantlarida `technical_parameters` ro‘yxatini imkon qadar batafsil yoz:
+    - kamida 10 ta band berishga harakat qil
+    - har bir band "Parametr: qiymat" ko‘rinishida bo‘lsin (masalan: "Portlar soni: 8 ta")
+    - faqat evidence ichida uchragan yoki aniq xulosa qilinadigan (model/brandga bog‘lamaydigan) parametrlarni yoz
+    - agar parametr manbalarda yo‘q bo‘lsa, "manbalarda ko‘rsatilmagan" deb yoz (taxmin qilma)
 
 VAZIFA:
 Foydalanuvchi so‘rovi bo‘yicha texnik topshiriq loyihasini yarat:
@@ -123,6 +128,11 @@ recommended_specification ichida:
 - Kafolat talabi
 - Yetkazib berish va qabul qilish talabi
 - Raqobatni cheklamaslik eslatmasi
+
+`recommended_specification["Texnik talablar"]` bo‘yicha:
+- imkon qadar 12–20 ta band yoz
+- bandlar evidence matnidan (condition/raw_text) ajratilgan bo‘lsin
+- aniq bo‘lmagan joylarda "manbalarda ko‘rsatilmagan" deb yoz
 
 JSON FORMAT:
 {{
