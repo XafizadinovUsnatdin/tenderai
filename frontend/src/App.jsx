@@ -103,6 +103,109 @@ function normalizeText(value) {
     .trim();
 }
 
+const KEYMAP_EN_TO_RU = {
+  q: "й",
+  w: "ц",
+  e: "у",
+  r: "к",
+  t: "е",
+  y: "н",
+  u: "г",
+  i: "ш",
+  o: "щ",
+  p: "з",
+  "[": "х",
+  "]": "ъ",
+  a: "ф",
+  s: "ы",
+  d: "в",
+  f: "а",
+  g: "п",
+  h: "р",
+  j: "о",
+  k: "л",
+  l: "д",
+  ";": "ж",
+  "'": "э",
+  z: "я",
+  x: "ч",
+  c: "с",
+  v: "м",
+  b: "и",
+  n: "т",
+  m: "ь",
+  ",": "б",
+  ".": "ю",
+  "`": "ё",
+};
+
+const KEYMAP_RU_TO_EN = Object.fromEntries(Object.entries(KEYMAP_EN_TO_RU).map(([k, v]) => [v, k]));
+
+function swapKeyboardLayout(text, map) {
+  return String(text ?? "")
+    .split("")
+    .map((ch) => {
+      const lower = ch.toLowerCase();
+      const mapped = map[lower];
+      if (!mapped) return ch;
+
+      const out = ch === lower ? mapped : mapped.toUpperCase();
+      return out;
+    })
+    .join("");
+}
+
+function diffCount(a, b) {
+  const s1 = String(a ?? "");
+  const s2 = String(b ?? "");
+  const len = Math.min(s1.length, s2.length);
+  let d = Math.abs(s1.length - s2.length);
+  for (let i = 0; i < len; i++) {
+    if (s1[i] !== s2[i]) d += 1;
+  }
+  return d;
+}
+
+function hasCyrillic(text) {
+  return /[\u0400-\u04FF]/.test(String(text ?? ""));
+}
+
+function hasLatin(text) {
+  return /[A-Za-z]/.test(String(text ?? ""));
+}
+
+function buildQueryFixes(query) {
+  const q = String(query ?? "").trim();
+  if (!q) return [];
+
+  const fixes = [];
+  const toRu = swapKeyboardLayout(q, KEYMAP_EN_TO_RU);
+  const toEn = swapKeyboardLayout(q, KEYMAP_RU_TO_EN);
+
+  const cyr = hasCyrillic(q);
+  const lat = hasLatin(q);
+
+  if (cyr && diffCount(q, toEn) >= 2 && hasLatin(toEn)) {
+    fixes.push({ id: "ru_to_en", label: "Lotincha (klav.)", value: toEn });
+  }
+
+  if (lat && diffCount(q, toRu) >= 2 && hasCyrillic(toRu)) {
+    fixes.push({ id: "en_to_ru", label: "Kirilcha (klav.)", value: toRu });
+  }
+
+  // Mixed query: allow both fixes (if they actually change something)
+  if (cyr && lat) {
+    if (diffCount(q, toEn) >= 2 && !fixes.some((f) => f.id === "ru_to_en")) {
+      fixes.push({ id: "ru_to_en", label: "Lotincha (klav.)", value: toEn });
+    }
+    if (diffCount(q, toRu) >= 2 && !fixes.some((f) => f.id === "en_to_ru")) {
+      fixes.push({ id: "en_to_ru", label: "Kirilcha (klav.)", value: toRu });
+    }
+  }
+
+  return fixes.slice(0, 2);
+}
+
 function parseDateSafe(value) {
   if (!value) return null;
   const date = new Date(value);
@@ -815,6 +918,8 @@ export default function App() {
   const [evidenceFilters, setEvidenceFilters] = useState(() => getDefaultEvidenceFilters());
   const [supplierViewer, setSupplierViewer] = useState(null);
 
+  const queryFixes = useMemo(() => buildQueryFixes(query), [query]);
+
   function toggleSource(source) {
     setEnabledSources((prev) =>
       prev.includes(source) ? prev.filter((s) => s !== source) : [...prev, source]
@@ -1140,6 +1245,22 @@ export default function App() {
                   placeholder="Masalan: TP-Link TL-SG108S, printer, konditsioner..."
                 />
               </div>
+              {queryFixes.length > 0 && (
+                <div className="query-fixes">
+                  <span className="muted tiny">Tuzatish:</span>
+                  {queryFixes.map((fix) => (
+                    <button
+                      key={fix.id}
+                      type="button"
+                      className="secondary-btn small"
+                      onClick={() => setQuery(fix.value)}
+                      title={fix.value}
+                    >
+                      {fix.label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="input-group period-input">
