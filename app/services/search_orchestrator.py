@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+import re
 
 from app.connectors.etender_uzex_connector import EtenderUzexConnector
 from app.connectors.xarid_uzex_connector import XaridUzexConnector
@@ -33,6 +34,18 @@ def _filter_by_period(evidences: list[Evidence], period_months: int) -> list[Evi
             filtered.append(ev)
 
     return filtered
+
+
+def _pick_keyword_for_etender(keywords: list[str], user_query: str) -> str:
+    """
+    Etender portalida ko‘pincha kirillcha keyword aniqroq ishlaydi.
+    Shuning uchun keywordlar orasida kirillcha bo‘lsa, o‘shani prioritet qilamiz.
+    """
+    for k in keywords or []:
+        if k and re.search(r"[\u0400-\u04FF]", k):
+            return k
+
+    return next((k for k in keywords or [] if k), None) or user_query
 
 
 class SearchOrchestrator:
@@ -132,10 +145,10 @@ class SearchOrchestrator:
                     "message": "Manba o‘chirib qo‘yilgan (enabled_sources).",
                 }
                 evidences_by_source[name] = []
-                return
+            return
 
             try:
-                keyword = next((k for k in keywords if k), None) or user_query
+                keyword = _pick_keyword_for_etender(keywords=keywords, user_query=user_query)
 
                 evidences = await self.etender.search(
                     query=keyword,

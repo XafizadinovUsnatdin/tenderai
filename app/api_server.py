@@ -137,6 +137,118 @@ def extract_query_cyrillic_keywords(query: str, max_items: int = 2) -> list[str]
     return out[:max_items]
 
 
+_RU_LATIN_MULTI = [
+    ("shch", "щ"),
+    ("sch", "щ"),
+    ("yo", "ё"),
+    ("zh", "ж"),
+    ("kh", "х"),
+    ("ts", "ц"),
+    ("ch", "ч"),
+    ("sh", "ш"),
+    ("yu", "ю"),
+    ("ya", "я"),
+    ("ye", "е"),
+]
+
+_RU_LATIN_SINGLE = {
+    "a": "а",
+    "b": "б",
+    "v": "в",
+    "g": "г",
+    "d": "д",
+    "e": "е",
+    "z": "з",
+    "i": "и",
+    "j": "й",
+    "k": "к",
+    "l": "л",
+    "m": "м",
+    "n": "н",
+    "o": "о",
+    "p": "п",
+    "r": "р",
+    "s": "с",
+    "t": "т",
+    "u": "у",
+    "f": "ф",
+    "h": "х",
+    "y": "ы",
+    "q": "к",
+    "w": "в",
+}
+
+
+def transliterate_ru_latin_to_cyrillic(text: str) -> str:
+    """
+    Ruscha so‘zlar lotin harflarida translit qilib yozilgan bo‘lsa (masalan: "bumaga A4 list"),
+    portal qidiruvi uchun kirillcha variantini taxminan tiklaymiz: "бумага A4 лист".
+
+    Bu 100% mukammal transliteratsiya emas, lekin tender keyword qidiruv uchun yetarli seed beradi.
+    """
+    if not text:
+        return ""
+
+    src = text.lower()
+    out: list[str] = []
+    i = 0
+
+    while i < len(src):
+        matched = False
+
+        for latin, cyr in _RU_LATIN_MULTI:
+            if src.startswith(latin, i):
+                out.append(cyr)
+                i += len(latin)
+                matched = True
+                break
+
+        if matched:
+            continue
+
+        ch = src[i]
+        mapped = _RU_LATIN_SINGLE.get(ch)
+        if mapped is not None:
+            out.append(mapped)
+        else:
+            out.append(text[i])
+
+        i += 1
+
+    return "".join(out)
+
+
+def extract_query_translit_ru_keywords(query: str, max_items: int = 2) -> list[str]:
+    """
+    Query lotincha bo‘lsa ham, ruscha translit bo‘lishi mumkin.
+    Shuning uchun kirillcha seed keywordlarni ajratib, qidiruvga qo‘shamiz.
+    """
+    if not query:
+        return []
+
+    # Agar allaqachon kirill bo‘lsa, bu funksiya kerak emas.
+    if re.search(r"[\u0400-\u04FF]", query):
+        return []
+
+    # Hech bo‘lmasa lotin harflari bo‘lsin.
+    if not re.search(r"[a-zA-Z]", query):
+        return []
+
+    translit = transliterate_ru_latin_to_cyrillic(query)
+    tokens = re.findall(r"[\u0400-\u04FF]{3,}", translit.lower())
+    tokens = [t for t in tokens if t not in _RU_STOPWORDS]
+
+    unique: list[str] = []
+    for t in tokens:
+        if t not in unique:
+            unique.append(t)
+
+    if not unique:
+        return []
+
+    return unique[:max_items]
+
+
 async def call_openrouter(prompt: str) -> str:
     api_key = os.getenv("OPENROUTER_API_KEY")
     model = os.getenv("OPENROUTER_MODEL", "openai/gpt-4o-mini")
@@ -279,8 +391,14 @@ async def generate_technical_task(request: GenerateRequest):
             seed = extract_query_cyrillic_keywords(request.query, max_items=2)
             if seed:
                 keywords = list(dict.fromkeys([*keywords, *seed]))
-                # Portalga haddan tashqari ko‘p keyword yubormaslik uchun limit
-                keywords = keywords[:8]
+
+            # Query lotincha bo‘lib, ruscha translit bo‘lsa ham seed qo‘shamiz ("bumaga" -> "бумага").
+            translit_seed = extract_query_translit_ru_keywords(request.query, max_items=2)
+            if translit_seed:
+                keywords = list(dict.fromkeys([*keywords, *translit_seed]))
+
+            # Portalga haddan tashqari ko‘p keyword yubormaslik uchun limit
+            keywords = keywords[:8]
 
         enabled_sources = request.enabled_sources or [
             "xarid.uzex.uz",
