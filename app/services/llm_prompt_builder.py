@@ -2,6 +2,7 @@ import json
 from typing import Any
 
 from app.schemas import Evidence, ProductCandidate
+from app.services.env_config import env_int
 
 
 class LLMPromptBuilder:
@@ -13,6 +14,17 @@ class LLMPromptBuilder:
         price_analysis: dict[str, Any],
         evidences_by_source: dict[str, list[Evidence]],
     ) -> str:
+        evidences_per_source = env_int("PROMPT_EVIDENCES_PER_SOURCE", 10)
+        max_text_chars = env_int("PROMPT_MAX_TEXT_CHARS", 1200)
+
+        def truncate_text(value: str | None) -> str | None:
+            if value is None:
+                return None
+            text = str(value)
+            if max_text_chars <= 0 or len(text) <= max_text_chars:
+                return text
+            return text[:max_text_chars].rstrip() + "…"
+
         evidence_summaries: dict[str, Any] = {}
         compact_by_source: dict[str, list[dict[str, Any]]] = {}
 
@@ -27,7 +39,9 @@ class LLMPromptBuilder:
 
             compact: list[dict[str, Any]] = []
 
-            for ev in evidences[:20]:
+            for ev in evidences[:evidences_per_source]:
+                # `condition` is primary evidence text; `raw_text` is often a verbose duplicate.
+                evidence_text = ev.condition or ev.raw_text
                 compact.append(
                     {
                         "source_name": ev.source_name,
@@ -37,7 +51,7 @@ class LLMPromptBuilder:
                         "lot_display_no": ev.lot_display_no,
                         "product_name": ev.product_name,
                         "category_name": ev.category_name,
-                        "condition": ev.condition,
+                        "condition": truncate_text(evidence_text),
                         "amount": ev.amount,
                         "deal_cost": ev.deal_cost,
                         "unit_price": ev.unit_price,
@@ -56,7 +70,6 @@ class LLMPromptBuilder:
                         "contract_file_path": ev.contract_file_path,
                         "additional_protocol_file_name": ev.additional_protocol_file_name,
                         "additional_protocol_file_path": ev.additional_protocol_file_path,
-                        "raw_text": ev.raw_text,
                     }
                 )
 
@@ -131,7 +144,7 @@ recommended_specification ichida:
 
 `recommended_specification["Texnik talablar"]` bo‘yicha:
 - imkon qadar 12–20 ta band yoz
-- bandlar evidence matnidan (condition/raw_text) ajratilgan bo‘lsin
+- bandlar evidence matnidan (condition) ajratilgan bo‘lsin
 - aniq bo‘lmagan joylarda "manbalarda ko‘rsatilmagan" deb yoz
 
 JSON FORMAT:
@@ -180,5 +193,5 @@ JSON FORMAT:
 }}
 
 MA’LUMOTLAR:
-{json.dumps(data, ensure_ascii=False, indent=2)}
+{json.dumps(data, ensure_ascii=False, separators=(",", ":"))}
 """.strip()
