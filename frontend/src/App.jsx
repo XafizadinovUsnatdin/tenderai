@@ -17,6 +17,10 @@ const API_URL =
   import.meta.env.VITE_API_URL ||
   (import.meta.env.PROD ? "/api/generate" : "http://127.0.0.1:8000/api/generate");
 
+const INTERNET_API_URL =
+  import.meta.env.VITE_INTERNET_API_URL ||
+  (import.meta.env.PROD ? "/api/internet" : "http://127.0.0.1:8000/api/internet");
+
 function getDefaultEvidenceFilters() {
   return {
     searchText: "",
@@ -939,6 +943,112 @@ function InternetAnswer({ result, technicalChips, onClose }) {
   );
 }
 
+function parseGroundedInternetAnswerText(text) {
+  const lines = String(text || "")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  if (!lines.length) return { intro: "", bullets: [] };
+
+  const headingIndex = lines.findIndex((l) => /asosiy\s+xarakteristikalar/i.test(l));
+
+  if (headingIndex === -1) {
+    return { intro: lines.join(" "), bullets: [] };
+  }
+
+  const intro = lines.slice(0, headingIndex).join(" ").trim();
+  const rest = lines.slice(headingIndex + 1);
+  const bullets = rest
+    .filter((l) => /^[-•*\u2022]/.test(l) || /^\d+[.)]/.test(l))
+    .map((l) =>
+      l
+        .replace(/^[-•*\u2022]\s*/, "")
+        .replace(/^\d+[.)]\s*/, "")
+        .trim()
+    )
+    .filter(Boolean)
+    .slice(0, 12);
+
+  return { intro, bullets };
+}
+
+function GroundedInternetAnswer({ internet, loading, error, onClose }) {
+  const queryText = String(internet?.query || "").trim() || "so'rov";
+  const answerText = String(internet?.answer_text || "").trim();
+  const sources = Array.isArray(internet?.sources) ? internet.sources : [];
+  const parsed = parseGroundedInternetAnswerText(answerText);
+
+  return (
+    <Card className="internet-answer full">
+      <div className="internet-answer-top">
+        <div className="internet-query">
+          <span className="internet-pill">"{queryText}"</span>
+          <span className="muted tiny">Gemini + Google Search</span>
+        </div>
+        <button type="button" className="secondary-btn small" onClick={onClose}>
+          Yopish
+        </button>
+      </div>
+
+      <h2 className="internet-title">{queryText}</h2>
+
+      {loading ? (
+        <div className="loading-box" style={{ marginTop: 0 }}>
+          <Loader2 className="spin" size={22} />
+          <span>Internetdan ma'lumot olinmoqda...</span>
+        </div>
+      ) : error ? (
+        <div className="error-box" style={{ marginTop: 0 }}>
+          <AlertTriangle size={20} />
+          <span>{error}</span>
+        </div>
+      ) : (
+        <>
+          {parsed.intro ? (
+            <p className="internet-intro">{parsed.intro}</p>
+          ) : answerText ? (
+            <p className="internet-intro">{answerText}</p>
+          ) : (
+            <p className="muted">Ma'lumot yo'q</p>
+          )}
+
+          {parsed.bullets.length > 0 && (
+            <>
+              <h3 className="internet-h3">Asosiy xarakteristikalar</h3>
+              <ul className="internet-bullets">
+                {parsed.bullets.map((b) => (
+                  <li key={b}>{b}</li>
+                ))}
+              </ul>
+            </>
+          )}
+
+          {sources.length > 0 && (
+            <>
+              <h3 className="internet-h3">Manbalar</h3>
+              <ul className="internet-bullets">
+                {sources.map((s, idx) => {
+                  const title = String(s?.title || "").trim();
+                  const uri = String(s?.uri || "").trim();
+                  if (!uri) return null;
+                  return (
+                    <li key={uri || `${idx}`}>
+                      <a href={uri} target="_blank" rel="noreferrer">
+                        {title || uri}
+                      </a>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
+          )}
+        </>
+      )}
+    </Card>
+  );
+}
+
 export default function App() {
   const [query, setQuery] = useState("TP-Link TL-SG108S");
   const [periodMonths, setPeriodMonths] = useState(12);
@@ -957,6 +1067,9 @@ export default function App() {
   const [evidenceFilters, setEvidenceFilters] = useState(() => getDefaultEvidenceFilters());
   const [supplierViewer, setSupplierViewer] = useState(null);
   const [showInternetAnswer, setShowInternetAnswer] = useState(false);
+  const [internetLoading, setInternetLoading] = useState(false);
+  const [internetError, setInternetError] = useState("");
+  const [internetResult, setInternetResult] = useState(null);
 
   function toggleSource(source) {
     setEnabledSources((prev) =>
@@ -1033,6 +1146,43 @@ export default function App() {
   async function handleSubmit(e) {
     e.preventDefault();
     await performSearch();
+  }
+
+  async function performInternetSearch() {
+    const q = String(query || "").trim();
+
+    setShowInternetAnswer(true);
+
+    if (!q) {
+      setInternetError("Mahsulot yoki xizmat nomini kiriting.");
+      return;
+    }
+
+    setInternetLoading(true);
+    setInternetError("");
+    setInternetResult({ query: q, answer_text: "", sources: [] });
+
+    try {
+      const response = await fetch(INTERNET_API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ query: q }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Backend xatolik qaytardi.");
+      }
+
+      setInternetResult(data);
+    } catch (err) {
+      setInternetError(err.message);
+    } finally {
+      setInternetLoading(false);
+    }
   }
 
   const selected = result?.selected_product;
@@ -1158,11 +1308,6 @@ export default function App() {
     () => applyEvidenceFilters(evidencesForActiveSource, evidenceFilters),
     [evidencesForActiveSource, evidenceFilters]
   );
-
-  function openInternetAnswer() {
-    setActiveTab("result");
-    setShowInternetAnswer(true);
-  }
 
   return (
     <div className="app">
@@ -1419,26 +1564,12 @@ export default function App() {
                 <button
                   type="button"
                   className="secondary-btn small"
-                  onClick={() => {
-                    const sameQuery = String(result?.query || "").trim() === String(query || "").trim();
-                    const sameSources =
-                      Array.isArray(result?.enabled_sources) &&
-                      JSON.stringify(result.enabled_sources) === JSON.stringify(enabledSources);
-
-                    if (result?.technical_task && sameQuery && sameSources) {
-                      openInternetAnswer();
-                      return;
-                    }
-
-                    performSearch({ openInternetAfter: true });
-                  }}
-                  disabled={loading || !query.trim() || !enabledSources?.length}
+                  onClick={performInternetSearch}
+                  disabled={loading || internetLoading || !query.trim()}
                   title={
                     !query.trim()
                       ? "Mahsulot nomini kiriting."
-                    : !enabledSources?.length
-                        ? "Kamida bitta tender manbasini tanlang."
-                        : undefined
+                      : undefined
                   }
                 >
                   <Globe size={16} />
@@ -1507,6 +1638,15 @@ export default function App() {
         )}
       </Card>
 
+      {showInternetAnswer && (
+        <GroundedInternetAnswer
+          internet={internetResult}
+          loading={internetLoading}
+          error={internetError}
+          onClose={() => setShowInternetAnswer(false)}
+        />
+      )}
+
       {result && (
         <>
           <div className="result-header">
@@ -1569,14 +1709,6 @@ export default function App() {
 
           {activeTab === "result" && (
             <>
-              {showInternetAnswer && (
-                <InternetAnswer
-                  result={result}
-                  technicalChips={technicalChips}
-                  onClose={() => setShowInternetAnswer(false)}
-                />
-              )}
-
               <div className="summary-grid">
                 <Card>
                   <SectionTitle
@@ -1625,18 +1757,6 @@ export default function App() {
                         </div>
                       );
                     })}
-                  </div>
-                  <div className="internet-btn-wrap">
-                    <button
-                      type="button"
-                      className="secondary-btn small"
-                      onClick={openInternetAnswer}
-                      disabled={!result?.technical_task}
-                      title={!result?.technical_task ? "Avval qidiruvni ishga tushiring" : undefined}
-                    >
-                      <Globe size={16} />
-                      Internet
-                    </button>
                   </div>
                 </Card>
 

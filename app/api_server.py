@@ -21,6 +21,11 @@ from app.services.generic_output_validator import GenericOutputValidator
 from app.services.search_orchestrator import SearchOrchestrator
 from app.services.env_config import (
     env_str,
+    get_gemini_api_key,
+    get_gemini_api_version,
+    get_gemini_base_url,
+    get_gemini_max_output_tokens,
+    get_gemini_model,
     get_openrouter_api_key,
     get_openrouter_base_url,
     get_openrouter_max_tokens,
@@ -92,6 +97,10 @@ class GenerateRequest(BaseModel):
     query: str = Field(..., min_length=2)
     period_months: int = Field(default=12, ge=1, le=60)
     enabled_sources: list[str] | None = None
+
+
+class InternetRequest(BaseModel):
+    query: str = Field(..., min_length=2)
 
 
 def extract_json(text: str) -> dict[str, Any]:
@@ -333,6 +342,113 @@ async def call_openrouter(prompt: str) -> str:
     data = response.json()
     return data["choices"][0]["message"]["content"]
 
+def _extract_gemini_text(response_json: dict[str, Any]) -> str:
+    candidates = response_json.get("candidates") or []
+    if not candidates:
+        return ""
+
+    candidate = candidates[0] if isinstance(candidates[0], dict) else {}
+    content = candidate.get("content") or {}
+    parts = content.get("parts") or []
+    texts: list[str] = []
+    for part in parts:
+        if isinstance(part, dict) and isinstance(part.get("text"), str):
+            texts.append(part["text"])
+    return "".join(texts).strip()
+
+
+def _extract_gemini_sources(response_json: dict[str, Any]) -> list[dict[str, str]]:
+    candidates = response_json.get("candidates") or []
+    if not candidates:
+        return []
+
+    candidate = candidates[0] if isinstance(candidates[0], dict) else {}
+    grounding = candidate.get("groundingMetadata") or candidate.get("grounding_metadata") or {}
+
+    chunks = grounding.get("groundingChunks") or grounding.get("grounding_chunks") or []
+    sources: list[dict[str, str]] = []
+    seen: set[str] = set()
+
+    for chunk in chunks:
+        if not isinstance(chunk, dict):
+            continue
+        web = chunk.get("web") or chunk.get("web") or {}
+        if not isinstance(web, dict):
+            continue
+        uri = web.get("uri")
+        if not uri or not isinstance(uri, str):
+            continue
+        if uri in seen:
+            continue
+        seen.add(uri)
+        title = web.get("title")
+        if not isinstance(title, str) or not title.strip():
+            title = uri
+        sources.append({"title": title.strip(), "uri": uri.strip()})
+
+    return sources[:12]
+
+
+async def call_gemini_grounded_answer(user_query: str) -> dict[str, Any]:
+    """
+    Uses Gemini API with Google Search grounding to generate a short product/service overview.
+    """
+    api_key = get_gemini_api_key()
+    model = get_gemini_model()
+    base_url = get_gemini_base_url()
+    api_version = get_gemini_api_version()
+    max_output_tokens = get_gemini_max_output_tokens()
+
+    if not api_key:
+        raise RuntimeError(
+            "GEMINI_API_KEY topilmadi (env var bo‘lishi kerak). "
+            "Local’da `.env` ga yozing, Railway/production’da esa Service Variables’da "
+            "`GEMINI_API_KEY` ni set qiling."
+        )
+
+    prompt = f"""
+Siz internetdan foydalangan holda mahsulot yoki xizmat haqida qisqa ma’lumot beruvchi AI yordamchisiz.
+
+Foydalanuvchi so‘rovi: {user_query}
+
+Talablar:
+1) Javob faqat o‘zbek tilida bo‘lsin.
+2) 1–3 gapdan iborat qisqa tavsif yozing.
+3) Keyin "Asosiy xarakteristikalar" bo‘limida 6–10 ta band yozing.
+4) Juda aniq brend/modelni majburiy talab sifatida yozmang; umumiy mahsulot turiga mos tavsif bering.
+5) Juda uzun yozmang.
+""".strip()
+
+    url = f"{base_url}/{api_version}/models/{model}:generateContent"
+
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "tools": [{"google_search": {}}],
+        "generationConfig": {
+            "temperature": 0.2,
+            "maxOutputTokens": max_output_tokens,
+        },
+    }
+
+    headers = {
+        "x-goog-api-key": api_key,
+        "Content-Type": "application/json",
+    }
+
+    async with httpx.AsyncClient(timeout=90) as client:
+        response = await client.post(url, headers=headers, json=payload)
+
+    if response.status_code != 200:
+        raise RuntimeError(f"Gemini error {response.status_code}: {response.text[:1000]}")
+
+    data = response.json()
+    return {
+        "query": user_query,
+        "answer_text": _extract_gemini_text(data),
+        "sources": _extract_gemini_sources(data),
+        "model": model,
+    }
+
 
 
 
@@ -386,6 +502,7 @@ async def health():
     Useful in production to confirm env vars are visible.
     """
     api_key = get_openrouter_api_key()
+    gemini_key = get_gemini_api_key()
     return {
         "status": "ok",
         "openrouter": {
@@ -395,6 +512,14 @@ async def health():
             "base_url": get_openrouter_base_url(),
             "max_tokens": get_openrouter_max_tokens(),
         },
+        "gemini": {
+            "api_key_present": bool(gemini_key),
+            "api_key_length": len(gemini_key or ""),
+            "model": get_gemini_model(),
+            "base_url": get_gemini_base_url(),
+            "api_version": get_gemini_api_version(),
+            "max_output_tokens": get_gemini_max_output_tokens(),
+        },
         "railway": {
             "environment_name": env_str("RAILWAY_ENVIRONMENT_NAME") or env_str("RAILWAY_ENVIRONMENT"),
             "service_name": env_str("RAILWAY_SERVICE_NAME"),
@@ -402,6 +527,16 @@ async def health():
             "service_id": env_str("RAILWAY_SERVICE_ID"),
         },
     }
+
+
+@app.post("/api/internet")
+async def internet_answer(request: InternetRequest):
+    try:
+        return await call_gemini_grounded_answer(request.query)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @app.get("/{full_path:path}")

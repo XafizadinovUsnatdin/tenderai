@@ -64,3 +64,37 @@ def get_openrouter_max_tokens(default: int = 4096) -> int:
 def get_openrouter_max_tokens_small(default: int = 1024) -> int:
     return env_int("OPENROUTER_MAX_TOKENS_SMALL", default)
 
+
+def get_gemini_api_key() -> str | None:
+    """
+    Returns Gemini API key from env.
+
+    Supported sources:
+    - GEMINI_API_KEY
+    - GEMINI_API_KEY_FILE (path to a file containing the key)
+    """
+    key = env_str("GEMINI_API_KEY")
+    if key:
+        return key
+
+    key_file = env_str("GEMINI_API_KEY_FILE")
+    if key_file:
+        return _read_secret_file(key_file)
+
+    return None
+
+
+def get_gemini_model(default: str = "gemini-2.0-flash") -> str:
+    return env_str("GEMINI_MODEL") or default
+
+
+def get_gemini_base_url(default: str = "https://generativelanguage.googleapis.com") -> str:
+    return env_str("GEMINI_BASE_URL") or default
+
+
+def get_gemini_api_version(default: str = "v1beta") -> str:
+    return env_str("GEMINI_API_VERSION") or default
+
+
+def get_gemini_max_output_tokens(default: int = 1024) -> int:
+    return env_int("GEMINI_MAX_OUTPUT_TOKENS", default)
