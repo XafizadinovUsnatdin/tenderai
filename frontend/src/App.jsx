@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Loader2,
   Database,
+  Globe,
   PackageSearch,
   BarChart3,
   ShieldAlert,
@@ -848,6 +849,96 @@ function TechnicalTask({ task }) {
   );
 }
 
+function InternetAnswer({ result, technicalChips, onClose }) {
+  const task = result?.technical_task;
+  const selected = result?.selected_product;
+  if (!task) return null;
+
+  const spec = task?.recommended_specification;
+  const subject =
+    selected?.name ||
+    (spec && typeof spec === "object" ? spec["Xarid predmeti"] : null) ||
+    task?.title ||
+    result?.query ||
+    "Natija";
+
+  const intro =
+    String(task?.product_understanding || "").trim() ||
+    String(task?.previous_tender_insights || "").trim() ||
+    "";
+
+  const specTech =
+    spec && typeof spec === "object" && Array.isArray(spec["Texnik talablar"])
+      ? spec["Texnik talablar"]
+      : [];
+
+  const bulletsBase = specTech.length > 0 ? specTech : Array.isArray(technicalChips) ? technicalChips : [];
+  const bullets = bulletsBase
+    .map((t) => String(t || "").trim())
+    .filter(Boolean)
+    .slice(0, 12);
+
+  const priceSummary = task?.price_summary || result?.price_analysis || null;
+  const hasPrice =
+    priceSummary &&
+    (typeof priceSummary?.recommended_min_price === "number" ||
+      typeof priceSummary?.recommended_max_price === "number" ||
+      typeof priceSummary?.avg_price === "number");
+
+  const nf = new Intl.NumberFormat("uz-UZ");
+
+  return (
+    <Card className="internet-answer full">
+      <div className="internet-answer-top">
+        <div className="internet-query">
+          <span className="internet-pill">"{result?.query || "so‘rov"}"</span>
+          <span className="muted tiny">Internet</span>
+        </div>
+        <button type="button" className="secondary-btn small" onClick={onClose}>
+          Yopish
+        </button>
+      </div>
+
+      <h2 className="internet-title">{subject}</h2>
+
+      {intro ? <p className="internet-intro">{intro}</p> : <p className="muted">Ma’lumot yo‘q</p>}
+
+      {bullets.length > 0 && (
+        <>
+          <h3 className="internet-h3">Asosiy xarakteristikalar</h3>
+          <ul className="internet-bullets">
+            {bullets.map((b) => (
+              <li key={b}>{b}</li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {hasPrice && (
+        <div className="internet-price">
+          <div className="internet-price-row">
+            <span className="muted">Tavsiya narx diapazoni:</span>
+            <b>
+              {typeof priceSummary?.recommended_min_price === "number"
+                ? nf.format(priceSummary.recommended_min_price)
+                : "—"}
+              {"  "}
+              —
+              {"  "}
+              {typeof priceSummary?.recommended_max_price === "number"
+                ? nf.format(priceSummary.recommended_max_price)
+                : "—"}
+            </b>
+          </div>
+          {typeof priceSummary?.avg_price === "number" && (
+            <div className="muted tiny">O‘rtacha: {nf.format(priceSummary.avg_price)}</div>
+          )}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 export default function App() {
   const [query, setQuery] = useState("TP-Link TL-SG108S");
   const [periodMonths, setPeriodMonths] = useState(12);
@@ -865,6 +956,7 @@ export default function App() {
   const [activeEvidenceSource, setActiveEvidenceSource] = useState("all");
   const [evidenceFilters, setEvidenceFilters] = useState(() => getDefaultEvidenceFilters());
   const [supplierViewer, setSupplierViewer] = useState(null);
+  const [showInternetAnswer, setShowInternetAnswer] = useState(false);
 
   function toggleSource(source) {
     setEnabledSources((prev) =>
@@ -942,6 +1034,8 @@ export default function App() {
   const candidates = result?.candidates || [];
   const candidateConfidence = result?.candidate_confidence || null;
   const evidences = result?.evidences || [];
+  const sourceSummaries = result?.source_summaries || {};
+  const sourceStatus = result?.source_status || {};
 
   const supplierRows = useMemo(
     () => buildSupplierPerformance(evidences),
@@ -956,6 +1050,29 @@ export default function App() {
     const merged = [...technicalParams, ...technicalHighlights].map((t) => String(t || "").trim()).filter(Boolean);
     return Array.from(new Set(merged)).slice(0, 28);
   }, [technicalParams, technicalHighlights]);
+
+  const sourcesForPanel = useMemo(() => {
+    const preferredOrder = [
+      "xarid.uzex.uz",
+      "xarid.uzex.uz/national",
+      "xarid.uzex.uz/auction",
+      "etender.uzex.uz",
+    ];
+
+    const list = Array.isArray(result?.enabled_sources) ? result.enabled_sources : enabledSources;
+    const uniq = Array.from(new Set(list.filter(Boolean)));
+    const ordered = [];
+
+    for (const s of preferredOrder) {
+      if (uniq.includes(s)) ordered.push(s);
+    }
+
+    for (const s of uniq) {
+      if (!ordered.includes(s)) ordered.push(s);
+    }
+
+    return ordered;
+  }, [enabledSources, result?.enabled_sources]);
 
   const alternativeCandidates = useMemo(() => {
     const list = Array.isArray(candidates) ? candidates : [];
@@ -1036,6 +1153,11 @@ export default function App() {
     () => applyEvidenceFilters(evidencesForActiveSource, evidenceFilters),
     [evidencesForActiveSource, evidenceFilters]
   );
+
+  function openInternetAnswer() {
+    setActiveTab("result");
+    setShowInternetAnswer(true);
+  }
 
   return (
     <div className="app">
@@ -1288,6 +1410,18 @@ export default function App() {
                   <span>etender.uzex.uz</span>
                 </label>
               </div>
+              <div className="sources-internet-btn">
+                <button
+                  type="button"
+                  className="secondary-btn small"
+                  onClick={openInternetAnswer}
+                  disabled={!result?.technical_task}
+                  title={!result?.technical_task ? "Avval qidiruvni ishga tushiring" : undefined}
+                >
+                  <Globe size={16} />
+                  Internet
+                </button>
+              </div>
               <div className="source-presets">
                 <button
                   type="button"
@@ -1412,6 +1546,14 @@ export default function App() {
 
           {activeTab === "result" && (
             <>
+              {showInternetAnswer && (
+                <InternetAnswer
+                  result={result}
+                  technicalChips={technicalChips}
+                  onClose={() => setShowInternetAnswer(false)}
+                />
+              )}
+
               <div className="summary-grid">
                 <Card>
                   <SectionTitle
@@ -1436,6 +1578,42 @@ export default function App() {
                     {result.keywords?.map((k) => (
                       <span key={k}>{k}</span>
                     ))}
+                  </div>
+                </Card>
+
+                <Card>
+                  <SectionTitle
+                    icon={<Globe size={22} />}
+                    title="Manbalar"
+                    subtitle="Tender saytlardan olingan dalillar"
+                  />
+                  <div className="sources-panel">
+                    {sourcesForPanel.map((s) => {
+                      const summary = sourceSummaries?.[s] || {};
+                      const status = sourceStatus?.[s]?.status || null;
+                      const count = summary?.total_evidences ?? sourceStatus?.[s]?.count ?? 0;
+                      return (
+                        <div className="source-row" key={s}>
+                          <div className="source-row-left">
+                            <div className="source-name">{s}</div>
+                            <div className="muted tiny">Evidence: {count}</div>
+                          </div>
+                          {status && <span className={`status-badge ${status}`}>{status}</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="internet-btn-wrap">
+                    <button
+                      type="button"
+                      className="secondary-btn small"
+                      onClick={openInternetAnswer}
+                      disabled={!result?.technical_task}
+                      title={!result?.technical_task ? "Avval qidiruvni ishga tushiring" : undefined}
+                    >
+                      <Globe size={16} />
+                      Internet
+                    </button>
                   </div>
                 </Card>
 
