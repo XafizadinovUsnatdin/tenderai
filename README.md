@@ -139,6 +139,34 @@ Eslatma: `.env` ni gitga commit qilmang.
 
 Diagram/flowchart: `docs/product_search_flow.md`
 
+## Loyiha tuzilmasi (asosiy fayllar va vazifasi)
+
+### Backend (FastAPI)
+
+- `app/api_server.py` — FastAPI serveri, `/api/generate` endpointi, keyword→candidate→evidence→LLM→validation pipeline’ini birlashtiradi.
+- `app/schemas.py` — asosiy dataclass’lar: `ProductCandidate`, `Evidence`.
+- `app/connectors/xarid_uzex_connector.py` — `xarid.uzex.uz` completed-deals va katalog API’lari bilan ishlaydi:
+  - `Lib/GetCategories` → kategoriyalar
+  - `Lib/GetProducts/{category_id}?keyword=...` → product candidate’lar
+  - `Common/GetCompletedDeals` → tanlangan `product_code` bo‘yicha lotlar
+- `app/connectors/etender_uzex_connector.py` — `etender.uzex.uz` DealsList bo‘yicha qidiradi (`product_code` yo‘q, keyword bilan ishlaydi).
+- `app/services/search_orchestrator.py` — barcha manbalar bo‘yicha evidence yig‘ishni boshqaradi (qaysi source yoqilgan/skip/failed, period filter).
+- `app/services/query_understanding_service.py` — user query’dan RU/UZ keywordlar va `search_plan` chiqaradi (LLM; fallback ham bor).
+- `app/services/candidate_selector_service.py` — katalogdan chiqqan candidate’lardan eng mos `product_code` ni tanlaydi (LLM; fallback: top score).
+- `app/services/price_analysis_service.py` — `unit_price` bor evidence’lar bo‘yicha narx tahlili (global va source kesimida).
+- `app/services/llm_prompt_builder.py` — evidence + tahlil + statuslardan LLM prompt tuzadi (prompt hajmini env bilan boshqaradi).
+- `app/services/generic_output_validator.py` — LLM qaytargan TT JSON’ni guardrail qoidalar bilan tekshiradi, ogohlantirishlar beradi.
+- `app/services/env_config.py` — env/config o‘qish helper’lari (`OPENROUTER_API_KEY` va h.k.), `/api/health` diagnostika ma’lumotlari shu asosida.
+
+### Frontend (React + Vite)
+
+- `frontend/` — UI: query kiritish, manbalarni yoqib-o‘chirish, evidence jadvali, narx tahlili va TT natijalarini ko‘rsatish.
+
+### Hujjatlar va testlar
+
+- `docs/product_search_flow.md` — mahsulot katalogidan topish oqimi (flowchart).
+- `test_etender_connector.py`, `xarid_*_test.py`, `etender_*_test.py` — connector va qidiruvni qo‘lda test qilish skriptlari (debug uchun).
+
 ## Frontend nimalarni ko‘rsatadi
 
 - Manbalarni tanlash: `xarid` / `national` / `auction` / `etender`
@@ -149,3 +177,14 @@ Diagram/flowchart: `docs/product_search_flow.md`
 - Narx trend grafigi (unit_price bo‘lsa)
 - Hudud / provider kesimida narx tahlili
 - Texnik parametrlar summary chip’lari
+
+## Sozlamalar (env) — amaliy eslatmalar
+
+- `.env` faqat lokal uchun; production’da (Render/Railway) secret’lar service **Variables** orqali beriladi.
+- OpenRouter:
+  - `OPENROUTER_API_KEY` — majburiy (yoki `OPENROUTER_API_KEY_FILE`)
+  - `OPENROUTER_MAX_TOKENS` — LLM javob uzunligi (kredit kam bo‘lsa kamaytiring)
+  - `OPENROUTER_MAX_TOKENS_SMALL` — keyword/candidate tanlash uchun kichik limit
+- Prompt hajmini kamaytirish (prompt token limit xatolariga qarshi):
+  - `PROMPT_EVIDENCES_PER_SOURCE` — har bir source’dan promptga nechta evidence kiritish
+  - `PROMPT_MAX_TEXT_CHARS` — evidence matnini (condition) nechta belgigacha qisqartirish
