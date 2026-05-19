@@ -59,6 +59,65 @@ class GenericOutputValidator:
             )
         )
 
+        warnings.extend(
+            self._check_variant_similarity(llm_result=llm_result)
+        )
+
+        return warnings
+
+    def _check_variant_similarity(self, llm_result: dict[str, Any]) -> list[str]:
+        """
+        Variantlar (econom/standard/premium) bir xil bo‘lib qolganini aniqlash uchun yumshoq tekshiruv.
+        Bu "xato" emas, lekin foydalanuvchiga signal berish uchun warning qaytaramiz.
+        """
+        def _get_params(variant_key: str) -> list[str]:
+            variant = llm_result.get(variant_key)
+            if not isinstance(variant, dict):
+                return []
+            params = variant.get("technical_parameters")
+            if not isinstance(params, list):
+                return []
+            out: list[str] = []
+            for item in params:
+                if not isinstance(item, str):
+                    continue
+                normalized = re.sub(r"\s+", " ", item.strip().lower())
+                if normalized:
+                    out.append(normalized)
+            return out
+
+        def _jaccard(a: list[str], b: list[str]) -> float:
+            sa = set(a)
+            sb = set(b)
+            if not sa and not sb:
+                return 1.0
+            if not sa or not sb:
+                return 0.0
+            return len(sa & sb) / len(sa | sb)
+
+        econ = _get_params("econom_variant")
+        standard = _get_params("standard_variant")
+        premium = _get_params("premium_variant")
+
+        if not (econ or standard or premium):
+            return []
+
+        warnings: list[str] = []
+
+        pairs = [
+            ("econom_variant", econ, "standard_variant", standard),
+            ("standard_variant", standard, "premium_variant", premium),
+            ("econom_variant", econ, "premium_variant", premium),
+        ]
+
+        for left_name, left, right_name, right in pairs:
+            sim = _jaccard(left, right)
+            if sim >= 0.9 and left and right:
+                warnings.append(
+                    f"{left_name} va {right_name} technical_parameters juda o‘xshash (similarity={sim:.2f}). "
+                    "Variantlar daraja bo‘yicha farqlanishi kerak."
+                )
+
         return warnings
 
     def _check_unsupported_claims(self, result_text: str) -> list[str]:

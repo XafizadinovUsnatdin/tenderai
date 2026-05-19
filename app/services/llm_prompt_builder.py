@@ -23,7 +23,7 @@ class LLMPromptBuilder:
             text = str(value)
             if max_text_chars <= 0 or len(text) <= max_text_chars:
                 return text
-            return text[:max_text_chars].rstrip() + "…"
+            return text[:max_text_chars].rstrip() + "..."
 
         evidence_summaries: dict[str, Any] = {}
         compact_by_source: dict[str, list[dict[str, Any]]] = {}
@@ -118,6 +118,10 @@ QOIDALAR:
 16. Ekonom/Standart/Premium variantlarida `technical_parameters` ro‘yxatini imkon qadar batafsil yoz:
     - kamida 10 ta band berishga harakat qil
     - har bir band "Parametr: qiymat" ko‘rinishida bo‘lsin (masalan: "Portlar soni: 8 ta")
+    - variantlar bir xil bo‘lib qolmasin: econom/standard/premium `technical_parameters` nusxa (copy-paste) bo‘lmasin; har variantda kamida 4 ta band (yoki band qiymati) farq qilsin
+    - har variant `technical_parameters` ro‘yxatining 1-bandi aniq darajani ko‘rsatsin: "Daraja: ekonom" / "Daraja: standart" / "Daraja: premium"
+    - Standard daraja Econom’dan, Premium daraja Standard’dan kuchliroq (qat’iyroq) talablarni ifodalasin
+    - agar aniq raqam/qiymat manbalarda bo‘lmasa, farqni son bilan emas, daraja bilan ifoda qil (minimal/tavsiya/kengaytirilgan) va "tavsiya" deb belgila
     - faqat evidence ichida uchragan yoki aniq xulosa qilinadigan (model/brandga bog‘lamaydigan) parametrlarni yoz
     - agar parametr manbalarda yo‘q bo‘lsa, "manbalarda ko‘rsatilmagan" deb yoz (taxmin qilma)
 
