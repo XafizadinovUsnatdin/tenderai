@@ -6,6 +6,12 @@ from typing import Any
 import httpx
 from dotenv import load_dotenv
 
+from app.services.env_config import (
+    get_openrouter_api_key,
+    get_openrouter_base_url,
+    get_openrouter_max_tokens_small,
+    get_openrouter_model,
+)
 
 load_dotenv()
 
@@ -79,16 +85,10 @@ Foydalanuvchi so‘rovi:
 """.strip()
 
     async def _call_openrouter(self, prompt: str, query: str) -> str:
-        api_key = os.getenv("OPENROUTER_API_KEY")
-        model = os.getenv("OPENROUTER_MODEL", "openai/gpt-4o-mini")
-        base_url = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
-        max_tokens_raw = (os.getenv("OPENROUTER_MAX_TOKENS_SMALL") or "").strip()
-        try:
-            max_tokens = int(max_tokens_raw) if max_tokens_raw else 1024
-            if max_tokens <= 0:
-                max_tokens = 1024
-        except Exception:
-            max_tokens = 1024
+        api_key = get_openrouter_api_key()
+        model = get_openrouter_model()
+        base_url = get_openrouter_base_url()
+        max_tokens = get_openrouter_max_tokens_small()
 
         if not api_key:
             return json.dumps(self._fallback_without_llm(query), ensure_ascii=False)

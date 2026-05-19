@@ -86,6 +86,11 @@ Production’da `.env` fayl odatda konteyner ichiga nusxalanmaydi, shuning uchun
 - `OPENROUTER_API_KEY` (majburiy)
 - `OPENROUTER_MODEL` (ixtiyoriy)
 - `OPENROUTER_BASE_URL` (ixtiyoriy)
+- `OPENROUTER_MAX_TOKENS` (ixtiyoriy, default 4096; kredit kam bo‘lsa kamaytiring)
+- `OPENROUTER_MAX_TOKENS_SMALL` (ixtiyoriy, default 1024)
+
+Eslatma: Railway’da Variables o‘zgartirilsa “staged changes” bo‘lishi mumkin — ular ishlashi uchun Deploy qilish kerak.
+Diagnostika uchun `GET /api/health` endpointida `api_key_present` true/false ko‘rinadi (secret chiqmaydi).
 
 ## Sozlamalar (.env)
 

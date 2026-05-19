@@ -5,6 +5,7 @@ from typing import Any
 from datetime import datetime, timedelta
 from pathlib import Path
 import httpx
+import logging
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,10 +19,18 @@ from app.services.price_analysis_service import PriceAnalysisService
 from app.services.llm_prompt_builder import LLMPromptBuilder
 from app.services.generic_output_validator import GenericOutputValidator
 from app.services.search_orchestrator import SearchOrchestrator
+from app.services.env_config import (
+    env_str,
+    get_openrouter_api_key,
+    get_openrouter_base_url,
+    get_openrouter_max_tokens,
+    get_openrouter_model,
+)
 
 
 load_dotenv()
 
+logger = logging.getLogger("tenderai.api")
 
 app = FastAPI(
     title="TenderAI API",
@@ -32,6 +41,26 @@ app = FastAPI(
 ROOT_DIR = Path(__file__).resolve().parent.parent
 FRONTEND_DIST_DIR = ROOT_DIR / "frontend" / "dist"
 FRONTEND_INDEX_FILE = FRONTEND_DIST_DIR / "index.html"
+
+
+@app.on_event("startup")
+async def _log_runtime_config():
+    api_key_present = bool(get_openrouter_api_key())
+    api_key_len = len(get_openrouter_api_key() or "")
+    model = get_openrouter_model()
+    base_url = get_openrouter_base_url()
+    railway_env = env_str("RAILWAY_ENVIRONMENT_NAME") or env_str("RAILWAY_ENVIRONMENT") or None
+    service_name = env_str("RAILWAY_SERVICE_NAME")
+
+    logger.info(
+        "Runtime config: openrouter_key_present=%s openrouter_key_len=%s model=%s base_url=%s railway_env=%s railway_service=%s",
+        api_key_present,
+        api_key_len,
+        model,
+        base_url,
+        railway_env,
+        service_name,
+    )
 
 
 def _parse_cors_origins() -> tuple[list[str], bool]:
@@ -250,22 +279,17 @@ def extract_query_translit_ru_keywords(query: str, max_items: int = 2) -> list[s
 
 
 async def call_openrouter(prompt: str) -> str:
-    api_key = os.getenv("OPENROUTER_API_KEY")
-    model = os.getenv("OPENROUTER_MODEL", "openai/gpt-4o-mini")
-    base_url = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
-    max_tokens_raw = (os.getenv("OPENROUTER_MAX_TOKENS") or "").strip()
-    try:
-        max_tokens = int(max_tokens_raw) if max_tokens_raw else 4096
-        if max_tokens <= 0:
-            max_tokens = 4096
-    except Exception:
-        max_tokens = 4096
+    api_key = get_openrouter_api_key()
+    model = get_openrouter_model()
+    base_url = get_openrouter_base_url()
+    max_tokens = get_openrouter_max_tokens()
 
     if not api_key:
         raise RuntimeError(
             "OPENROUTER_API_KEY topilmadi (env var bo‘lishi kerak). "
             "Local’da `.env` ga yozing, Railway/production’da esa Service Variables’da "
-            "`OPENROUTER_API_KEY` ni set qiling."
+            "`OPENROUTER_API_KEY` ni set qiling (o‘sha environment uchun) va staged changes bo‘lsa Deploy qiling. "
+            "Agar Shared Variables ishlatsangiz, service’ga variable reference sifatida qo‘shilganini tekshiring."
         )
 
     payload = {
@@ -285,6 +309,7 @@ async def call_openrouter(prompt: str) -> str:
             },
         ],
         "temperature": 0.2,
+        # OpenRouter: limit completion tokens to avoid 402 on low credits.
         "max_tokens": max_tokens,
     }
 
@@ -352,6 +377,31 @@ async def root():
         return FileResponse(FRONTEND_INDEX_FILE)
 
     return {"message": "TenderAI API ishlayapti", "docs": "/docs"}
+
+
+@app.get("/api/health")
+async def health():
+    """
+    Lightweight diagnostics endpoint (does NOT reveal secrets).
+    Useful in production to confirm env vars are visible.
+    """
+    api_key = get_openrouter_api_key()
+    return {
+        "status": "ok",
+        "openrouter": {
+            "api_key_present": bool(api_key),
+            "api_key_length": len(api_key or ""),
+            "model": get_openrouter_model(),
+            "base_url": get_openrouter_base_url(),
+            "max_tokens": get_openrouter_max_tokens(),
+        },
+        "railway": {
+            "environment_name": env_str("RAILWAY_ENVIRONMENT_NAME") or env_str("RAILWAY_ENVIRONMENT"),
+            "service_name": env_str("RAILWAY_SERVICE_NAME"),
+            "project_id": env_str("RAILWAY_PROJECT_ID"),
+            "service_id": env_str("RAILWAY_SERVICE_ID"),
+        },
+    }
 
 
 @app.get("/{full_path:path}")
