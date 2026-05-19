@@ -255,7 +255,11 @@ async def call_openrouter(prompt: str) -> str:
     base_url = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
 
     if not api_key:
-        raise RuntimeError("OPENROUTER_API_KEY .env ichida yo‘q")
+        raise RuntimeError(
+            "OPENROUTER_API_KEY topilmadi (env var bo‘lishi kerak). "
+            "Local’da `.env` ga yozing, Railway/production’da esa Service Variables’da "
+            "`OPENROUTER_API_KEY` ni set qiling."
+        )
 
     payload = {
         "model": model,

@@ -145,7 +145,7 @@ class SearchOrchestrator:
                     "message": "Manba o‘chirib qo‘yilgan (enabled_sources).",
                 }
                 evidences_by_source[name] = []
-            return
+                return
 
             try:
                 keyword = _pick_keyword_for_etender(keywords=keywords, user_query=user_query)

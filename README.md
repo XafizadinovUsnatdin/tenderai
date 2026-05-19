@@ -78,6 +78,15 @@ Eslatma:
 - Frontend production’da `VITE_API_URL` talab qilmaydi (default `/api/generate`).
 - Agar frontend’ni alohida domen’da deploy qilsangiz, backend’da `CORS_ORIGINS` ni shunga sozlang (vergul bilan bir nechta domain bo‘lishi mumkin).
 
+## Deploy (Railway — Dockerfile)
+
+Railway `Dockerfile` orqali deploy qiladi (`railway.json`).
+Production’da `.env` fayl odatda konteyner ichiga nusxalanmaydi, shuning uchun secret’larni Railway **Variables** orqali bering:
+
+- `OPENROUTER_API_KEY` (majburiy)
+- `OPENROUTER_MODEL` (ixtiyoriy)
+- `OPENROUTER_BASE_URL` (ixtiyoriy)
+
 ## Sozlamalar (.env)
 
 `.env.example` dan `.env` ga nusxa oling va quyidagini to‘ldiring:
@@ -122,6 +131,8 @@ Eslatma: `.env` ni gitga commit qilmang.
 5. `PriceAnalysisService` faqat `unit_price` bor evidence’lar bilan narx tahlili qiladi.
 6. `LLMPromptBuilder` multi-source prompt tuzadi, LLM TT JSON qaytaradi.
 7. `GenericOutputValidator` natijani tekshiradi (narx mosligi, brand/model lock, dalilsiz risk claim).
+
+Diagram/flowchart: `docs/product_search_flow.md`
 
 ## Frontend nimalarni ko‘rsatadi
 
