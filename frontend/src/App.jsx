@@ -1419,12 +1419,24 @@ export default function App() {
                 <button
                   type="button"
                   className="secondary-btn small"
-                  onClick={() => performSearch({ openInternetAfter: true })}
+                  onClick={() => {
+                    const sameQuery = String(result?.query || "").trim() === String(query || "").trim();
+                    const sameSources =
+                      Array.isArray(result?.enabled_sources) &&
+                      JSON.stringify(result.enabled_sources) === JSON.stringify(enabledSources);
+
+                    if (result?.technical_task && sameQuery && sameSources) {
+                      openInternetAnswer();
+                      return;
+                    }
+
+                    performSearch({ openInternetAfter: true });
+                  }}
                   disabled={loading || !query.trim() || !enabledSources?.length}
                   title={
                     !query.trim()
                       ? "Mahsulot nomini kiriting."
-                      : !enabledSources?.length
+                    : !enabledSources?.length
                         ? "Kamida bitta tender manbasini tanlang."
                         : undefined
                   }
