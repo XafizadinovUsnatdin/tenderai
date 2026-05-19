@@ -964,9 +964,7 @@ export default function App() {
     );
   }
 
-  async function handleSubmit(e) {
-    e.preventDefault();
-
+  async function performSearch({ openInternetAfter = false } = {}) {
     if (!query.trim()) {
       setError("Mahsulot nomini kiriting.");
       return;
@@ -980,6 +978,7 @@ export default function App() {
     setLoading(true);
     setError("");
     setResult(null);
+    setShowInternetAnswer(false);
     setActiveTab("result");
     setActiveEvidenceSource("all");
     setEvidenceFilters(getDefaultEvidenceFilters());
@@ -1020,6 +1019,7 @@ export default function App() {
 
       setResult(data);
       setActiveTab("result");
+      if (openInternetAfter && data?.technical_task) setShowInternetAnswer(true);
       setStep("Tayyor");
     } catch (err) {
       setError(err.message);
@@ -1028,6 +1028,11 @@ export default function App() {
       clearInterval(timer);
       setLoading(false);
     }
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    await performSearch();
   }
 
   const selected = result?.selected_product;
@@ -1414,9 +1419,15 @@ export default function App() {
                 <button
                   type="button"
                   className="secondary-btn small"
-                  onClick={openInternetAnswer}
-                  disabled={!result?.technical_task}
-                  title={!result?.technical_task ? "Avval qidiruvni ishga tushiring" : undefined}
+                  onClick={() => performSearch({ openInternetAfter: true })}
+                  disabled={loading || !query.trim() || !enabledSources?.length}
+                  title={
+                    !query.trim()
+                      ? "Mahsulot nomini kiriting."
+                      : !enabledSources?.length
+                        ? "Kamida bitta tender manbasini tanlang."
+                        : undefined
+                  }
                 >
                   <Globe size={16} />
                   Internet
