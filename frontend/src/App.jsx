@@ -17,6 +17,12 @@ const API_URL =
   import.meta.env.VITE_API_URL ||
   (import.meta.env.PROD ? "/api/generate" : "http://127.0.0.1:8000/api/generate");
 
+const CANDIDATES_API_URL =
+  import.meta.env.VITE_CANDIDATES_API_URL ||
+  (import.meta.env.PROD
+    ? "/api/candidates"
+    : "http://127.0.0.1:8000/api/candidates");
+
 const INTERNET_API_URL =
   import.meta.env.VITE_INTERNET_API_URL ||
   (import.meta.env.PROD ? "/api/internet" : "http://127.0.0.1:8000/api/internet");
@@ -1079,6 +1085,8 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState("");
   const [error, setError] = useState("");
+  const [candidateResult, setCandidateResult] = useState(null);
+  const [selectedCandidateCode, setSelectedCandidateCode] = useState("");
   const [result, setResult] = useState(null);
   const [activeTab, setActiveTab] = useState("result");
   const [activeEvidenceSource, setActiveEvidenceSource] = useState("all");
@@ -1108,6 +1116,8 @@ export default function App() {
 
     setLoading(true);
     setError("");
+    setCandidateResult(null);
+    setSelectedCandidateCode("");
     setResult(null);
     setShowInternetAnswer(false);
     setActiveTab("result");
@@ -1116,8 +1126,83 @@ export default function App() {
 
     const fakeSteps = [
       "Mahsulot turi aniqlanmoqda...",
-      "Xarid.uzex katalogidan product_code qidirilmoqda...",
+      "Xarid.uzex katalogidan candidatlar olinmoqda...",
+    ];
+
+    let index = 0;
+    setStep(fakeSteps[index]);
+
+    const timer = setInterval(() => {
+      index = Math.min(index + 1, fakeSteps.length - 1);
+      setStep(fakeSteps[index]);
+    }, 2500);
+
+    try {
+      const response = await fetch(CANDIDATES_API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          query,
+          enabled_sources: enabledSources,
+          max_candidates: 15,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        const detail = data?.detail;
+        const message =
+          typeof detail === "string"
+            ? detail
+            : detail && typeof detail === "object" && typeof detail.message === "string"
+              ? detail.message
+              : "Backend xatolik qaytardi.";
+        throw new Error(message);
+      }
+
+      const list = Array.isArray(data?.candidates) ? data.candidates : [];
+      setCandidateResult(data);
+      setSelectedCandidateCode(String(list?.[0]?.product_code || ""));
+      setStep("");
+    } catch (err) {
+      setError(err.message);
+      setStep("");
+    } finally {
+      clearInterval(timer);
+      setLoading(false);
+    }
+  }
+
+  async function performGenerate({ openInternetAfter = false } = {}) {
+    if (!query.trim()) {
+      setError("Mahsulot nomini kiriting.");
+      return;
+    }
+
+    if (!enabledSources?.length) {
+      setError("Kamida bitta tender manbasini tanlang.");
+      return;
+    }
+
+    const candidates = Array.isArray(candidateResult?.candidates) ? candidateResult.candidates : [];
+    const selectedCandidate =
+      candidates.find((c) => String(c?.product_code || "") === String(selectedCandidateCode || "")) ||
+      null;
+
+    setLoading(true);
+    setError("");
+    setResult(null);
+    setShowInternetAnswer(false);
+    setActiveTab("result");
+    setActiveEvidenceSource("all");
+    setEvidenceFilters(getDefaultEvidenceFilters());
+
+    const fakeSteps = [
       "Tender manbalaridan dalillar yig‘ilmoqda...",
+      "Narxlar tahlil qilinmoqda...",
       "Texnik topshiriq generatsiya qilinmoqda...",
     ];
 
@@ -1139,13 +1224,24 @@ export default function App() {
           query,
           period_months: Number(periodMonths),
           enabled_sources: enabledSources,
+          selected_candidate: selectedCandidate,
+          candidates,
+          keywords: candidateResult?.keywords,
+          search_plan: candidateResult?.search_plan,
         }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.detail || "Backend xatolik qaytardi.");
+        const detail = data?.detail;
+        const message =
+          typeof detail === "string"
+            ? detail
+            : detail && typeof detail === "object" && typeof detail.message === "string"
+              ? detail.message
+              : "Backend xatolik qaytardi.";
+        throw new Error(message);
       }
 
       setResult(data);
@@ -1663,6 +1759,83 @@ export default function App() {
           </div>
         )}
       </Card>
+
+      {!loading && candidateResult && !result && (
+        <Card className="full">
+          <SectionTitle
+            icon={<PackageSearch size={22} />}
+            title="Alternative candidates"
+            subtitle="Xarid katalogidan topilgan variantlardan bittasini tanlang"
+          />
+
+          {Array.isArray(candidateResult?.candidates) && candidateResult.candidates.length > 0 ? (
+            <>
+              <div className="table-wrap" style={{ marginTop: 12 }}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Tanlash</th>
+                      <th>product_code</th>
+                      <th>Nomi</th>
+                      <th>Kategoriya</th>
+                      <th>Score</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {candidateResult.candidates.map((c) => {
+                      const code = String(c?.product_code || "").trim();
+                      const checked = code && code === String(selectedCandidateCode || "");
+                      return (
+                        <tr key={code || JSON.stringify(c)}>
+                          <td>
+                            <input
+                              type="radio"
+                              name="candidate_pick"
+                              checked={checked}
+                              onChange={() => setSelectedCandidateCode(code)}
+                            />
+                          </td>
+                          <td>
+                            <code>{code || "—"}</code>
+                          </td>
+                          <td>{c?.name || "—"}</td>
+                          <td>{c?.category_name || "—"}</td>
+                          <td>
+                            {typeof c?.score === "number"
+                              ? c.score.toFixed(2)
+                              : String(c?.score ?? "—")}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}>
+                <button
+                  type="button"
+                  className="primary-btn"
+                  onClick={() => performGenerate()}
+                >
+                  <FileText size={20} />
+                  Tanlash va davom etish
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="muted">Candidate topilmadi. Davom etib tahlil qilish mumkin.</p>
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}>
+                <button type="button" className="primary-btn" onClick={() => performGenerate()}>
+                  <FileText size={20} />
+                  Davom etish
+                </button>
+              </div>
+            </>
+          )}
+        </Card>
+      )}
 
       {showInternetAnswer && (
         <GroundedInternetAnswer

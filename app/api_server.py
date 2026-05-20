@@ -16,6 +16,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from app.connectors.xarid_uzex_connector import XaridUzexConnector
+from app.schemas import ProductCandidate
 from app.services.query_understanding_service import QueryUnderstandingService
 from app.services.candidate_selector_service import CandidateSelectorService
 from app.services.price_analysis_service import PriceAnalysisService
@@ -101,6 +102,18 @@ class GenerateRequest(BaseModel):
     query: str = Field(..., min_length=2)
     period_months: int = Field(default=12, ge=1, le=60)
     enabled_sources: list[str] | None = None
+    # Optional: manual candidate selection from UI
+    selected_candidate: dict[str, Any] | None = None
+    # Optional: pass candidates/keywords/search_plan from `/api/candidates` to avoid recomputing.
+    candidates: list[dict[str, Any]] | None = None
+    keywords: list[str] | None = None
+    search_plan: dict[str, Any] | None = None
+
+
+class CandidatesRequest(BaseModel):
+    query: str = Field(..., min_length=2)
+    enabled_sources: list[str] | None = None
+    max_candidates: int = Field(default=15, ge=1, le=50)
 
 
 class InternetRequest(BaseModel):
@@ -1203,6 +1216,122 @@ async def health():
     }
 
 
+def _default_enabled_sources() -> list[str]:
+    return [
+        "xarid.uzex.uz",
+        "xarid.uzex.uz/national",
+        "xarid.uzex.uz/auction",
+        "etender.uzex.uz",
+    ]
+
+
+def _build_keywords_for_query(user_query: str, search_plan: dict[str, Any]) -> list[str]:
+    keywords = (
+        (search_plan.get("search_keywords_ru") or [])
+        + (search_plan.get("search_keywords_uz") or [])
+    )
+    keywords = [k for k in keywords if isinstance(k, str) and k.strip()]
+    keywords = list(dict.fromkeys(keywords))
+
+    if not keywords:
+        keywords = [user_query]
+    else:
+        seed = extract_query_cyrillic_keywords(user_query, max_items=2)
+        if seed:
+            keywords = list(dict.fromkeys([*keywords, *seed]))
+
+        translit_seed = extract_query_translit_ru_keywords(user_query, max_items=2)
+        if translit_seed:
+            keywords = list(dict.fromkeys([*keywords, *translit_seed]))
+
+        keywords = keywords[:8]
+
+    return keywords
+
+
+def _candidate_to_json(c: ProductCandidate) -> dict[str, Any]:
+    return {
+        "product_code": c.product_code,
+        "name": c.name,
+        "category_id": c.category_id,
+        "category_name": c.category_name,
+        "score": c.score,
+    }
+
+
+def _candidate_from_json(value: dict[str, Any], *, selection_reason: str | None = None) -> ProductCandidate | None:
+    if not isinstance(value, dict):
+        return None
+
+    product_code = value.get("product_code")
+    if not isinstance(product_code, str) or not product_code.strip():
+        return None
+    product_code = product_code.strip()
+
+    category_id_raw = value.get("category_id")
+    try:
+        category_id = int(category_id_raw)
+    except Exception:
+        return None
+
+    name = value.get("name")
+    name = name.strip() if isinstance(name, str) and name.strip() else product_code
+
+    category_name = value.get("category_name")
+    category_name = category_name.strip() if isinstance(category_name, str) else ""
+
+    score_raw = value.get("score")
+    score = 0.0
+    if isinstance(score_raw, (int, float)):
+        score = float(score_raw)
+
+    return ProductCandidate(
+        id=0,
+        product_code=product_code,
+        name=name,
+        category_id=category_id,
+        category_name=category_name,
+        score=score,
+        selection_reason=selection_reason,
+    )
+
+
+@app.post("/api/candidates")
+async def candidates(request: CandidatesRequest):
+    """
+    Step-1 endpoint for manual candidate selection in UI.
+
+    Returns product candidates from Xarid katalog (when Xarid sources enabled),
+    plus `keywords`/`search_plan` so frontend can pass them back to `/api/generate`
+    without recomputing.
+    """
+    query_service = QueryUnderstandingService()
+    connector = XaridUzexConnector()
+
+    enabled_sources = request.enabled_sources or _default_enabled_sources()
+    xarid_sources = {"xarid.uzex.uz", "xarid.uzex.uz/national", "xarid.uzex.uz/auction"}
+
+    search_plan = await query_service.build_search_plan(request.query)
+    keywords = _build_keywords_for_query(request.query, search_plan)
+
+    candidates_list: list[ProductCandidate] = []
+    if any(source in enabled_sources for source in xarid_sources):
+        candidates_list = await connector.find_product_candidates(
+            keywords=keywords,
+            max_candidates=request.max_candidates,
+        )
+
+    candidates_json = [_candidate_to_json(c) for c in (candidates_list or [])]
+
+    return {
+        "query": request.query,
+        "enabled_sources": enabled_sources,
+        "keywords": keywords,
+        "search_plan": search_plan,
+        "candidates": candidates_json,
+    }
+
+
 @app.post("/api/internet")
 async def internet_answer(request: InternetRequest):
     query = request.query
@@ -1292,56 +1421,55 @@ async def generate_technical_task(request: GenerateRequest):
         prompt_builder = LLMPromptBuilder()
         validator = GenericOutputValidator()
 
-        search_plan = await query_service.build_search_plan(request.query)
+        search_plan = request.search_plan or None
+        if not isinstance(search_plan, dict):
+            search_plan = await query_service.build_search_plan(request.query)
 
-        keywords = (
-            search_plan.get("search_keywords_ru", [])
-            + search_plan.get("search_keywords_uz", [])
-        )
-        keywords = list(dict.fromkeys([k for k in keywords if k]))
-
-        if not keywords:
-            keywords = [request.query]
+        keywords = request.keywords or None
+        if not isinstance(keywords, list) or not keywords:
+            keywords = _build_keywords_for_query(request.query, search_plan)
         else:
-            # Query kirillcha bo‘lsa ham, original so‘zlardan seed keyword qo‘shamiz (LLM ba'zan adashtiradi).
-            seed = extract_query_cyrillic_keywords(request.query, max_items=2)
-            if seed:
-                keywords = list(dict.fromkeys([*keywords, *seed]))
+            keywords = [k for k in keywords if isinstance(k, str) and k.strip()]
+            keywords = list(dict.fromkeys(keywords))[:8] or [request.query]
 
-            # Query lotincha bo‘lib, ruscha translit bo‘lsa ham seed qo‘shamiz ("bumaga" -> "бумага").
-            translit_seed = extract_query_translit_ru_keywords(request.query, max_items=2)
-            if translit_seed:
-                keywords = list(dict.fromkeys([*keywords, *translit_seed]))
-
-            # Portalga haddan tashqari ko‘p keyword yubormaslik uchun limit
-            keywords = keywords[:8]
-
-        enabled_sources = request.enabled_sources or [
-            "xarid.uzex.uz",
-            "xarid.uzex.uz/national",
-            "xarid.uzex.uz/auction",
-            "etender.uzex.uz",
-        ]
+        enabled_sources = request.enabled_sources or _default_enabled_sources()
 
         selected = None
         candidates = []
 
         xarid_sources = {"xarid.uzex.uz", "xarid.uzex.uz/national", "xarid.uzex.uz/auction"}
 
-        if any(source in enabled_sources for source in xarid_sources):
+        candidates_from_request = request.candidates or None
+        if isinstance(candidates_from_request, list) and candidates_from_request:
+            parsed: list[ProductCandidate] = []
+            for item in candidates_from_request[:50]:
+                if not isinstance(item, dict):
+                    continue
+                cand = _candidate_from_json(item)
+                if cand:
+                    parsed.append(cand)
+            candidates = parsed[:20]
+        elif any(source in enabled_sources for source in xarid_sources):
             candidates = await connector.find_product_candidates(
                 keywords=keywords,
                 max_candidates=15,
             )
 
-            if candidates:
-                selected = await candidate_selector.select_best_candidate(
-                    user_query=request.query,
-                    search_plan=search_plan,
-                    candidates=candidates,
-                )
+        selected_from_request = request.selected_candidate or None
+        if isinstance(selected_from_request, dict) and selected_from_request:
+            picked = _candidate_from_json(selected_from_request, selection_reason="user_selected")
+            if picked:
+                picked_by_code = {c.product_code: c for c in (candidates or [])}
+                selected = picked_by_code.get(picked.product_code) or picked
+                selected.selection_reason = "user_selected"
+        elif candidates:
+            selected = await candidate_selector.select_best_candidate(
+                user_query=request.query,
+                search_plan=search_plan,
+                candidates=candidates,
+            )
 
-        
+         
         orchestrator = SearchOrchestrator()
 
         orchestration = await orchestrator.collect_all_sources(
