@@ -1,9 +1,12 @@
 import json
 import os
 import re
+import asyncio
+import html
 from typing import Any
 from datetime import datetime, timedelta
 from pathlib import Path
+from urllib.parse import parse_qs, unquote, urlparse
 import httpx
 import logging
 from dotenv import load_dotenv
@@ -29,6 +32,7 @@ from app.services.env_config import (
     get_openrouter_api_key,
     get_openrouter_base_url,
     get_openrouter_max_tokens,
+    get_openrouter_max_tokens_small,
     get_openrouter_model,
 )
 
@@ -156,7 +160,7 @@ def extract_query_cyrillic_keywords(query: str, max_items: int = 2) -> list[str]
     if not query:
         return []
 
-    tokens = re.findall(r"[\u0400-\u04FF]{3,}", query.lower())
+    tokens = re.findall("[\u0400-\u04FF]{3,}", query.lower())
     tokens = [t for t in tokens if t not in _RU_STOPWORDS]
 
     unique: list[str] = []
@@ -265,7 +269,7 @@ def extract_query_translit_ru_keywords(query: str, max_items: int = 2) -> list[s
         return []
 
     # Agar allaqachon kirill bo‘lsa, bu funksiya kerak emas.
-    if re.search(r"[\u0400-\u04FF]", query):
+    if re.search("[\u0400-\u04FF]", query):
         return []
 
     # Hech bo‘lmasa lotin harflari bo‘lsin.
@@ -273,7 +277,7 @@ def extract_query_translit_ru_keywords(query: str, max_items: int = 2) -> list[s
         return []
 
     translit = transliterate_ru_latin_to_cyrillic(query)
-    tokens = re.findall(r"[\u0400-\u04FF]{3,}", translit.lower())
+    tokens = re.findall("[\u0400-\u04FF]{3,}", translit.lower())
     tokens = [t for t in tokens if t not in _RU_STOPWORDS]
 
     unique: list[str] = []
@@ -357,6 +361,114 @@ def _extract_gemini_text(response_json: dict[str, Any]) -> str:
     return "".join(texts).strip()
 
 
+class GeminiAPIError(RuntimeError):
+    def __init__(
+        self,
+        status_code: int,
+        message: str,
+        *,
+        retry_after_seconds: float | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+        self.message = message
+        self.retry_after_seconds = retry_after_seconds
+
+
+class OpenRouterAPIError(RuntimeError):
+    def __init__(self, status_code: int, message: str) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+        self.message = message
+
+
+_GEMINI_DURATION_RE = re.compile(r"^(?P<seconds>\d+(?:\.\d+)?)s$")
+_OPENROUTER_CAN_ONLY_AFFORD_RE = re.compile(r"can only afford\s+(?P<n>\d+)", re.IGNORECASE)
+
+
+def _parse_duration_seconds(value: str | None) -> float | None:
+    if not value or not isinstance(value, str):
+        return None
+    match = _GEMINI_DURATION_RE.match(value.strip())
+    if not match:
+        return None
+    try:
+        seconds = float(match.group("seconds"))
+    except Exception:
+        return None
+    return seconds if seconds > 0 else None
+
+
+def _extract_retry_after_seconds(
+    response: httpx.Response, error_obj: dict[str, Any] | None
+) -> float | None:
+    header = response.headers.get("retry-after")
+    if header:
+        try:
+            seconds = float(str(header).strip())
+            return seconds if seconds > 0 else None
+        except Exception:
+            pass
+
+    if error_obj:
+        details = error_obj.get("details")
+        if isinstance(details, list):
+            for item in details:
+                if not isinstance(item, dict):
+                    continue
+                if item.get("@type") != "type.googleapis.com/google.rpc.RetryInfo":
+                    continue
+                retry_delay = item.get("retryDelay")
+                seconds = _parse_duration_seconds(retry_delay)
+                if seconds:
+                    return seconds
+
+    return None
+
+
+def _safe_json(response: httpx.Response) -> dict[str, Any] | None:
+    try:
+        data = response.json()
+    except Exception:
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _build_gemini_error_message(
+    *,
+    status_code: int,
+    model: str,
+    error_message: str | None,
+    retry_after_seconds: float | None,
+) -> str:
+    retry_hint = ""
+    if retry_after_seconds:
+        retry_hint = (
+            f" Taxminan {int(retry_after_seconds + 0.999)} soniyadan keyin qayta urinib ko‘ring."
+        )
+
+    # Special case: many accounts get 429 with "limit: 0" (no quota provisioned / not eligible).
+    if status_code == 429 and error_message and "limit: 0" in error_message:
+        return (
+            "Gemini API kvotasi mavjud emas (limit: 0). "
+            f"`{model}` modelida so‘rovlar ruxsat etilmagan. "
+            "Google AI Studio/GCP’da billing va quota (rate limits) ni tekshiring "
+            "yoki `.env` dagi `GEMINI_MODEL` ni o‘zgartiring."
+        )
+
+    if status_code == 429:
+        return "Gemini API limit/quota (429). Keyinroq qayta urinib ko‘ring." + retry_hint
+
+    short = (error_message or "").strip()
+    if short:
+        short = short.replace("\n", " ").strip()
+        if len(short) > 300:
+            short = short[:300].rstrip() + "…"
+        return f"Gemini API xatolik ({status_code}). {short}{retry_hint}"
+
+    return f"Gemini API xatolik ({status_code}).{retry_hint}"
+
+
 def _extract_gemini_sources(response_json: dict[str, Any]) -> list[dict[str, str]]:
     candidates = response_json.get("candidates") or []
     if not candidates:
@@ -398,6 +510,7 @@ async def call_gemini_grounded_answer(user_query: str) -> dict[str, Any]:
     base_url = get_gemini_base_url()
     api_version = get_gemini_api_version()
     max_output_tokens = get_gemini_max_output_tokens()
+    lang = _choose_answer_language(user_query)
 
     if not api_key:
         raise RuntimeError(
@@ -406,18 +519,21 @@ async def call_gemini_grounded_answer(user_query: str) -> dict[str, Any]:
             "`GEMINI_API_KEY` ni set qiling."
         )
 
+    language_rule = "rus tilida" if lang == "ru" else "o‘zbek tilida"
+    heading = "Основные характеристики" if lang == "ru" else "Asosiy xarakteristikalar"
+
     prompt = f"""
-Siz internetdan foydalangan holda mahsulot yoki xizmat haqida qisqa ma’lumot beruvchi AI yordamchisiz.
+    Siz internetdan foydalangan holda mahsulot yoki xizmat haqida qisqa ma’lumot beruvchi AI yordamchisiz.
 
-Foydalanuvchi so‘rovi: {user_query}
+    Foydalanuvchi so‘rovi: {user_query}
 
-Talablar:
-1) Javob faqat o‘zbek tilida bo‘lsin.
-2) 1–3 gapdan iborat qisqa tavsif yozing.
-3) Keyin "Asosiy xarakteristikalar" bo‘limida 6–10 ta band yozing.
-4) Juda aniq brend/modelni majburiy talab sifatida yozmang; umumiy mahsulot turiga mos tavsif bering.
-5) Juda uzun yozmang.
-""".strip()
+    Talablar:
+    1) Javob faqat {language_rule} bo‘lsin.
+    2) 1–3 gapdan iborat qisqa tavsif yozing.
+    3) Keyin "{heading}" bo‘limida 6–10 ta band yozing.
+    4) Juda aniq brend/modelni majburiy talab sifatida yozmang; umumiy mahsulot turiga mos tavsif bering.
+    5) Juda uzun yozmang.
+    """.strip()
 
     url = f"{base_url}/{api_version}/models/{model}:generateContent"
 
@@ -435,18 +551,279 @@ Talablar:
         "Content-Type": "application/json",
     }
 
+    # Retry a little for transient 429/5xx. NOTE: "limit: 0" is not transient (no quota).
+    retryable_statuses = {429, 500, 502, 503, 504}
+    max_attempts = 3
+
+    last_error: GeminiAPIError | None = None
+    data: dict[str, Any] | None = None
+
     async with httpx.AsyncClient(timeout=90) as client:
-        response = await client.post(url, headers=headers, json=payload)
+        for attempt in range(1, max_attempts + 1):
+            response = await client.post(url, headers=headers, json=payload)
+            if response.status_code == 200:
+                data = response.json()
+                break
 
-    if response.status_code != 200:
-        raise RuntimeError(f"Gemini error {response.status_code}: {response.text[:1000]}")
+            raw = _safe_json(response)
+            error_obj = raw.get("error") if raw else None
+            error_obj = error_obj if isinstance(error_obj, dict) else None
+            error_message = (
+                error_obj.get("message")
+                if (error_obj and isinstance(error_obj.get("message"), str))
+                else None
+            )
+            retry_after_seconds = _extract_retry_after_seconds(response, error_obj)
+            message = _build_gemini_error_message(
+                status_code=response.status_code,
+                model=model,
+                error_message=error_message,
+                retry_after_seconds=retry_after_seconds,
+            )
 
-    data = response.json()
+            last_error = GeminiAPIError(
+                response.status_code,
+                message,
+                retry_after_seconds=retry_after_seconds,
+            )
+
+            logger.warning(
+                "Gemini request failed (attempt %s/%s) status=%s model=%s retry_after=%s body=%s",
+                attempt,
+                max_attempts,
+                response.status_code,
+                model,
+                retry_after_seconds,
+                (response.text or "")[:800],
+            )
+
+            if response.status_code not in retryable_statuses:
+                break
+
+            # Not retrying on "limit: 0" because it's almost always a quota/config issue.
+            if response.status_code == 429 and error_message and "limit: 0" in error_message:
+                break
+
+            if attempt < max_attempts:
+                delay = retry_after_seconds or min(2**attempt, 10)
+                await asyncio.sleep(delay)
+
+    if data is None:
+        raise last_error or GeminiAPIError(500, "Gemini API: noma’lum xatolik.")
+
     return {
         "query": user_query,
         "answer_text": _extract_gemini_text(data),
         "sources": _extract_gemini_sources(data),
         "model": model,
+        "provider": "gemini",
+    }
+
+
+def _extract_openrouter_message(data: dict[str, Any]) -> dict[str, Any] | None:
+    choices = data.get("choices")
+    if not isinstance(choices, list) or not choices:
+        return None
+    choice0 = choices[0] if isinstance(choices[0], dict) else None
+    if not choice0:
+        return None
+    message = choice0.get("message")
+    return message if isinstance(message, dict) else None
+
+
+def _extract_openrouter_text(data: dict[str, Any]) -> str:
+    message = _extract_openrouter_message(data) or {}
+    content = message.get("content")
+    return content.strip() if isinstance(content, str) else ""
+
+
+def _extract_openrouter_sources(data: dict[str, Any]) -> list[dict[str, str]]:
+    message = _extract_openrouter_message(data) or {}
+    annotations = message.get("annotations")
+    if not isinstance(annotations, list):
+        return []
+
+    sources: list[dict[str, str]] = []
+    seen: set[str] = set()
+
+    for ann in annotations:
+        if not isinstance(ann, dict):
+            continue
+        if ann.get("type") != "url_citation":
+            continue
+        payload = ann.get("url_citation")
+        if not isinstance(payload, dict):
+            continue
+        url = payload.get("url")
+        if not isinstance(url, str) or not url.strip():
+            continue
+        url = url.strip()
+        if url in seen:
+            continue
+        seen.add(url)
+
+        title = payload.get("title")
+        if not isinstance(title, str) or not title.strip():
+            title = url
+        sources.append({"title": title.strip(), "uri": url})
+
+    return sources[:12]
+
+
+async def call_openrouter_grounded_answer(user_query: str) -> dict[str, Any]:
+    """
+    Uses OpenRouter + web search grounding to generate a short product/service overview.
+
+    This is a fallback for cases when Gemini API quota is unavailable.
+    """
+    api_key = get_openrouter_api_key()
+    base_url = get_openrouter_base_url()
+    model = env_str("OPENROUTER_INTERNET_MODEL") or get_openrouter_model()
+    max_tokens = min(get_openrouter_max_tokens_small(), 512)
+    lang = _choose_answer_language(user_query)
+
+    if not api_key:
+        raise RuntimeError(
+            "OPENROUTER_API_KEY topilmadi (env var bo'lishi kerak). "
+            "Local'da `.env` ga yozing, production'da esa environment variables'ga qo'shing."
+        )
+
+    language_rule = "rus tilida" if lang == "ru" else "o'zbek tilida"
+    heading = "Основные характеристики" if lang == "ru" else "Asosiy xarakteristikalar"
+
+    prompt = f"""
+Siz internetdan foydalanib mahsulot yoki xizmat haqida qisqa ma'lumot beruvchi AI yordamchisiz.
+
+Foydalanuvchi so'rovi: {user_query}
+
+Talablar:
+1) Javob faqat {language_rule} bo'lsin.
+2) 1–3 gapdan iborat qisqa tavsif yozing.
+3) Keyin \"{heading}\" bo'limida 6–10 ta band yozing.
+4) Javobni internet manbalari bilan asoslang va markdown linklar ko'rinishida kamida 3 ta manbani keltiring.
+5) Juda uzun yozmang.
+""".strip()
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
+    url = f"{base_url}/chat/completions"
+
+    # Prefer server tools when the model supports tool calling.
+    tool_payload = {
+        "model": model,
+        "messages": [
+            {
+                "role": "system",
+                "content": (
+                    f"You are a helpful assistant. Write in {'Russian' if lang == 'ru' else 'Uzbek'}. "
+                    "Use web search results and always cite sources as markdown links."
+                ),
+            },
+            {"role": "user", "content": prompt},
+        ],
+        "temperature": 0.2,
+        "max_tokens": max_tokens,
+        "tools": [
+            {
+                "type": "openrouter:web_search",
+                "parameters": {
+                    "engine": "exa",
+                    "max_results": 3,
+                    "max_total_results": 3,
+                    "search_context_size": "low",
+                    "user_location": {
+                        "type": "approximate",
+                        "country": "UZ",
+                        "timezone": "Asia/Tashkent",
+                    },
+                },
+            }
+        ],
+        "tool_choice": "required",
+    }
+
+    async with httpx.AsyncClient(timeout=120) as client:
+        response = await client.post(url, headers=headers, json=tool_payload)
+
+    if response.status_code == 402:
+        raw = _safe_json(response)
+        error_obj = raw.get("error") if raw else None
+        error_obj = error_obj if isinstance(error_obj, dict) else None
+        error_message = (
+            error_obj.get("message")
+            if (error_obj and isinstance(error_obj.get("message"), str))
+            else (response.text or "")
+        )
+        match = _OPENROUTER_CAN_ONLY_AFFORD_RE.search(error_message or "")
+        if match:
+            try:
+                affordable = int(match.group("n"))
+            except Exception:
+                affordable = 0
+            if affordable > 1:
+                max_tokens = max(1, min(max_tokens, affordable - 32))
+                tool_payload["max_tokens"] = max_tokens
+                async with httpx.AsyncClient(timeout=120) as client:
+                    response = await client.post(url, headers=headers, json=tool_payload)
+
+    # Fallback: deprecated web plugin path (works even if model/tool calling is unsupported).
+    if response.status_code != 200:
+        plugin_payload = {
+            "model": model,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": (
+                        f"You are a helpful assistant. Write in {'Russian' if lang == 'ru' else 'Uzbek'}. "
+                        "Use web search results and cite sources as markdown links."
+                    ),
+                },
+                {"role": "user", "content": prompt},
+            ],
+            "plugins": [{"id": "web", "engine": "exa", "max_results": 3}],
+            "temperature": 0.2,
+            "max_tokens": max_tokens,
+        }
+
+        async with httpx.AsyncClient(timeout=120) as client:
+            response = await client.post(url, headers=headers, json=plugin_payload)
+        if response.status_code == 402:
+            raw = _safe_json(response)
+            error_obj = raw.get("error") if raw else None
+            error_obj = error_obj if isinstance(error_obj, dict) else None
+            error_message = (
+                error_obj.get("message")
+                if (error_obj and isinstance(error_obj.get("message"), str))
+                else (response.text or "")
+            )
+            match = _OPENROUTER_CAN_ONLY_AFFORD_RE.search(error_message or "")
+            if match:
+                try:
+                    affordable = int(match.group("n"))
+                except Exception:
+                    affordable = 0
+                if affordable > 1:
+                    max_tokens = max(1, min(max_tokens, affordable - 32))
+                    plugin_payload["max_tokens"] = max_tokens
+                    async with httpx.AsyncClient(timeout=120) as client:
+                        response = await client.post(url, headers=headers, json=plugin_payload)
+
+    if response.status_code != 200:
+        raise OpenRouterAPIError(
+            response.status_code,
+            f"OpenRouter xatolik ({response.status_code}). {response.text[:800]}",
+        )
+
+    data = response.json()
+    return {
+        "query": user_query,
+        "answer_text": _extract_openrouter_text(data),
+        "sources": _extract_openrouter_sources(data),
+        "model": data.get("model") if isinstance(data.get("model"), str) else model,
+        "provider": "openrouter",
     }
 
 
@@ -454,6 +831,303 @@ Talablar:
 
 
 
+
+
+_DDG_LINK_RE = re.compile(
+    r"<a(?=[^>]*\bclass=['\"]result-link['\"])(?=[^>]*\bhref=['\"]([^'\"]+)['\"])[^>]*>(.*?)</a>",
+    re.IGNORECASE | re.DOTALL,
+)
+_DDG_SNIPPET_RE = re.compile(
+    r"<td[^>]*class=['\"]result-snippet['\"][^>]*>(.*?)</td>",
+    re.IGNORECASE | re.DOTALL,
+)
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
+_WS_RE = re.compile(r"\s+")
+_CYRILLIC_CHAR_RE = re.compile("[\u0400-\u04FF]")
+
+
+def _choose_answer_language(text: str) -> str:
+    """
+    Returns "ru" for Cyrillic queries, otherwise "uz".
+    """
+    return "ru" if _CYRILLIC_CHAR_RE.search(text or "") else "uz"
+
+
+def _strip_html(value: str) -> str:
+    if not value:
+        return ""
+    value = re.sub(r"<br\s*/?>", "\n", value, flags=re.IGNORECASE)
+    value = _HTML_TAG_RE.sub(" ", value)
+    value = html.unescape(value)
+    value = _WS_RE.sub(" ", value)
+    return value.strip()
+
+
+def _decode_duckduckgo_redirect(href: str) -> str:
+    href = html.unescape((href or "").strip())
+    if not href:
+        return ""
+
+    if href.startswith("//"):
+        href = "https:" + href
+
+    try:
+        parsed = urlparse(href)
+        qs = parse_qs(parsed.query)
+        uddg = qs.get("uddg", [None])[0]
+        if isinstance(uddg, str) and uddg.strip():
+            return unquote(uddg.strip())
+    except Exception:
+        pass
+
+    return href
+
+
+async def duckduckgo_lite_search(query: str, max_results: int = 5) -> list[dict[str, str]]:
+    if not query.strip():
+        return []
+
+    url = "https://lite.duckduckgo.com/lite/"
+    headers = {"User-Agent": "Mozilla/5.0 (compatible; TenderAI/1.0)"}
+
+    timeout = httpx.Timeout(45.0, connect=15.0)
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        response: httpx.Response | None = None
+        for attempt in range(2):
+            try:
+                response = await client.get(url, params={"q": query}, headers=headers)
+                break
+            except httpx.TimeoutException as exc:
+                if attempt == 0:
+                    await asyncio.sleep(0.4)
+                    continue
+                raise RuntimeError("DuckDuckGo search timeout.") from exc
+
+    if not response:
+        raise RuntimeError("DuckDuckGo search xatolik.")
+
+    if response.status_code != 200:
+        raise RuntimeError(f"DuckDuckGo search xatolik ({response.status_code}).")
+
+    html_text = response.text or ""
+    results: list[dict[str, str]] = []
+    seen: set[str] = set()
+
+    for match in _DDG_LINK_RE.finditer(html_text):
+        href = match.group(1) or ""
+        title = _strip_html(match.group(2) or "")
+
+        target_url = _decode_duckduckgo_redirect(href)
+        if not target_url or target_url in seen:
+            continue
+        seen.add(target_url)
+
+        tail = html_text[match.end() : match.end() + 2500]
+        snippet = ""
+        snip_match = _DDG_SNIPPET_RE.search(tail)
+        if snip_match:
+            snippet = _strip_html(snip_match.group(1) or "")
+
+        results.append({"title": title or target_url, "uri": target_url, "snippet": snippet})
+        if len(results) >= max(1, min(max_results, 10)):
+            break
+
+    return results
+
+
+def _extract_meta_description(html_text: str) -> str:
+    if not html_text:
+        return ""
+    match = re.search(
+        r"<meta[^>]+name=[\"']description[\"'][^>]+content=[\"']([^\"']+)[\"']",
+        html_text,
+        flags=re.IGNORECASE,
+    )
+    return _strip_html(match.group(1)) if match else ""
+
+
+def _extract_spec_pairs_from_html(html_text: str, max_pairs: int = 10) -> list[tuple[str, str]]:
+    if not html_text:
+        return []
+
+    pairs: list[tuple[str, str]] = []
+
+    for row in re.findall(r"<tr[^>]*>.*?</tr>", html_text, flags=re.IGNORECASE | re.DOTALL):
+        th_match = re.search(r"<th[^>]*>(.*?)</th>", row, flags=re.IGNORECASE | re.DOTALL)
+        td_match = re.search(r"<td[^>]*>(.*?)</td>", row, flags=re.IGNORECASE | re.DOTALL)
+        if not th_match or not td_match:
+            continue
+        key = _strip_html(th_match.group(1))
+        value = _strip_html(td_match.group(1))
+        if not key or not value:
+            continue
+        pairs.append((key, value))
+        if len(pairs) >= max(1, min(max_pairs, 20)):
+            break
+    return pairs
+
+
+async def call_free_search_grounded_answer(user_query: str) -> dict[str, Any]:
+    """
+    No-API-key fallback for `/api/internet`.
+
+    Uses DuckDuckGo Lite search + simple extraction (meta description + spec table pairs) to build
+    a short Uzbek/Russian overview with sources.
+    """
+    lang = _choose_answer_language(user_query)
+    results = await duckduckgo_lite_search(user_query, max_results=5)
+    sources = [{"title": r["title"], "uri": r["uri"]} for r in results if r.get("uri")]
+
+    description = ""
+    bullets: list[str] = []
+
+    if results:
+        first_url = results[0].get("uri") or ""
+        if first_url:
+            try:
+                timeout = httpx.Timeout(35.0, connect=15.0)
+                async with httpx.AsyncClient(timeout=timeout) as client:
+                    page = await client.get(
+                        first_url,
+                        headers={"User-Agent": "Mozilla/5.0 (compatible; TenderAI/1.0)"},
+                        follow_redirects=True,
+                    )
+                if page.status_code == 200:
+                    description = _extract_meta_description(page.text or "")
+                    pairs = _extract_spec_pairs_from_html(page.text or "", max_pairs=10)
+                    bullets = [f"{k}: {v}" for k, v in pairs]
+            except httpx.TimeoutException:
+                pass
+            except Exception:
+                pass
+
+    if not description:
+        for r in results:
+            snippet = (r.get("snippet") or "").strip()
+            if snippet:
+                description = snippet
+                break
+
+    if not bullets:
+        for r in results:
+            snippet = (r.get("snippet") or "").strip()
+            if not snippet:
+                continue
+            bullets.append(snippet)
+            if len(bullets) >= 8:
+                break
+
+    description = (description or "").strip()
+    if not description:
+        description = (
+            "Internetdan mos manbalar topilmadi yoki bloklandi."
+            if lang == "uz"
+            else "Не удалось найти подходящие источники в интернете или доступ ограничен."
+        )
+
+    # Lightweight translation for the free fallback (no LLM).
+    if lang == "uz":
+        desc_repl = [
+            ("Desktop Switch", "stol usti kommutator (switch)"),
+            ("Desktop Network Switch", "stol usti tarmoq kommutatori (switch)"),
+            ("Unmanaged", "boshqarilmaydigan"),
+            ("Switch", "kommutator (switch)"),
+            ("Gigabit", "Gigabit"),
+            ("10/100/1000Mbps", "10/100/1000 Mbit/s"),
+        ]
+        key_map = {
+            "Standards and Protocols": "Standartlar va protokollar",
+            "Interface": "Interfeys",
+            "Fan Quantity": "Ventilyatorlar soni",
+            "Max. Power Consumption": "Maksimal quvvat sarfi",
+            "External Power Supply": "Tashqi quvvat manbai",
+            "LED": "LED indikatorlar",
+            "Buffer Size": "Bufer xotira",
+            "Dimensions ( W x D x H )": "O'lchamlari (W×D×H)",
+            "MAC Address Table": "MAC manzillar jadvali",
+            "Packet Forwarding Rate": "Paket uzatish tezligi",
+            "Jumbo Frame": "Jumbo freym",
+            "Transmission Method": "Uzatish usuli",
+        }
+        value_map = {
+            "Fanless": "Ventilyatorsiz",
+            "Store and Forward": "Store-and-forward",
+        }
+    else:
+        desc_repl = [
+            ("Desktop Switch", "настольный коммутатор"),
+            ("Desktop Network Switch", "настольный сетевой коммутатор"),
+            ("Unmanaged", "неуправляемый"),
+            ("Switch", "коммутатор"),
+            ("Gigabit", "Gigabit"),
+            ("10/100/1000Mbps", "10/100/1000 Мбит/с"),
+        ]
+        key_map = {
+            "Standards and Protocols": "Стандарты и протоколы",
+            "Interface": "Интерфейсы",
+            "Fan Quantity": "Вентиляторы",
+            "Max. Power Consumption": "Макс. потребление",
+            "External Power Supply": "Внешнее питание",
+            "LED": "Индикаторы LED",
+            "Buffer Size": "Буфер",
+            "Dimensions ( W x D x H )": "Габариты (Ш×Г×В)",
+            "MAC Address Table": "Таблица MAC-адресов",
+            "Packet Forwarding Rate": "Скорость пересылки пакетов",
+            "Jumbo Frame": "Jumbo frame",
+            "Transmission Method": "Метод передачи",
+        }
+        value_map = {
+            "Fanless": "Без вентилятора",
+            "Store and Forward": "Store-and-forward",
+        }
+
+    for src, dst in desc_repl:
+        if description:
+            description = re.sub(re.escape(src), dst, description, flags=re.IGNORECASE)
+
+    translated_bullets: list[str] = []
+    for b in bullets:
+        if ":" in b:
+            k, v = b.split(":", 1)
+            k = key_map.get(k.strip(), k.strip())
+            v = v.strip()
+            v = value_map.get(v, v)
+            if lang == "uz":
+                v = (
+                    v.replace("Mbps", "Mbit/s")
+                    .replace("Ports", "port")
+                    .replace("Port", "port")
+                    .replace("Auto-Negotiation", "avto-negotiation")
+                )
+            else:
+                v = (
+                    v.replace("Mbps", "Мбит/с")
+                    .replace("Ports", "портов")
+                    .replace("Port", "порт")
+                    .replace("Auto-Negotiation", "авто‑согласование")
+                )
+            translated_bullets.append(f"{k}: {v}")
+        else:
+            translated_bullets.append(b)
+    bullets = translated_bullets
+
+    bullets = [b.strip() for b in bullets if b and b.strip()]
+    bullets = bullets[:12]
+
+    heading = "Asosiy xarakteristikalar:" if lang == "uz" else "Основные характеристики:"
+    answer_lines = [description, "", heading]
+    if bullets:
+        answer_lines.extend([f"- {b}" for b in bullets])
+    else:
+        answer_lines.append("- Ma'lumot topilmadi." if lang == "uz" else "- Данные не найдены.")
+
+    return {
+        "query": user_query,
+        "answer_text": "\n".join(answer_lines).strip(),
+        "sources": sources[:12],
+        "model": None,
+        "provider": "free_search",
+    }
 
 
 def parse_date(value: str | None) -> datetime | None:
@@ -531,12 +1205,57 @@ async def health():
 
 @app.post("/api/internet")
 async def internet_answer(request: InternetRequest):
+    query = request.query
+
+    # Try Gemini first (when configured), then fall back to OpenRouter web search grounding,
+    # and finally a free (no-key) DuckDuckGo-based fallback.
+    if get_gemini_api_key():
+        try:
+            return await call_gemini_grounded_answer(query)
+        except GeminiAPIError as exc:
+            logger.info(
+                "Gemini failed for /api/internet, trying OpenRouter fallback: %s",
+                exc.message,
+            )
+            try:
+                return await call_openrouter_grounded_answer(query)
+            except Exception:
+                logger.info("OpenRouter fallback failed for /api/internet, trying free search fallback.")
+                try:
+                    return await call_free_search_grounded_answer(query)
+                except Exception:
+                    headers: dict[str, str] = {}
+                    if exc.status_code == 429 and exc.retry_after_seconds:
+                        headers["Retry-After"] = str(int(exc.retry_after_seconds + 0.999))
+                    raise HTTPException(
+                        status_code=exc.status_code,
+                        detail={
+                            "message": exc.message,
+                            "retry_after_seconds": exc.retry_after_seconds,
+                            "provider": "gemini",
+                        },
+                        headers=headers or None,
+                    )
+
     try:
-        return await call_gemini_grounded_answer(request.query)
+        return await call_openrouter_grounded_answer(query)
+    except OpenRouterAPIError as exc:
+        logger.info("OpenRouter failed for /api/internet, trying free search fallback: %s", exc.message)
+        try:
+            return await call_free_search_grounded_answer(query)
+        except Exception:
+            raise HTTPException(
+                status_code=exc.status_code,
+                detail={"message": exc.message, "provider": "openrouter"},
+            )
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        logger.info("OpenRouter not available for /api/internet, trying free search fallback: %s", str(exc)[:300])
+        try:
+            return await call_free_search_grounded_answer(query)
+        except Exception as free_exc:
+            raise HTTPException(status_code=500, detail=str(free_exc))
 
 
 @app.get("/{full_path:path}")

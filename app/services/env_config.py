@@ -84,7 +84,7 @@ def get_gemini_api_key() -> str | None:
     return None
 
 
-def get_gemini_model(default: str = "gemini-2.0-flash") -> str:
+def get_gemini_model(default: str = "gemini-2.5-flash-lite") -> str:
     return env_str("GEMINI_MODEL") or default
 
 

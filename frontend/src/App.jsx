@@ -951,7 +951,11 @@ function parseGroundedInternetAnswerText(text) {
 
   if (!lines.length) return { intro: "", bullets: [] };
 
-  const headingIndex = lines.findIndex((l) => /asosiy\s+xarakteristikalar/i.test(l));
+  const headingIndex = lines.findIndex((l) =>
+    /(asosiy\s+xarakteristikalar|asosiy\s+xususiyatlar|основн(ые|ая)\s+характеристик(и|а))/i.test(
+      l
+    )
+  );
 
   if (headingIndex === -1) {
     return { intro: lines.join(" "), bullets: [] };
@@ -977,6 +981,20 @@ function GroundedInternetAnswer({ internet, loading, error, onClose }) {
   const queryText = String(internet?.query || "").trim() || "so'rov";
   const answerText = String(internet?.answer_text || "").trim();
   const sources = Array.isArray(internet?.sources) ? internet.sources : [];
+  const provider = String(internet?.provider || "").trim().toLowerCase();
+  const isCyrillicQuery = /[\u0400-\u04FF]/.test(queryText);
+  const providerLabel =
+    provider === "openrouter"
+      ? isCyrillicQuery
+        ? "Интернет‑поиск (AI)"
+        : "Internet qidiruvi (AI)"
+      : provider === "free_search"
+        ? isCyrillicQuery
+          ? "Интернет‑поиск (бесплатно)"
+          : "Internet qidiruvi (bepul)"
+        : isCyrillicQuery
+          ? "Gemini + Google поиск"
+          : "Gemini + Google qidiruvi";
   const parsed = parseGroundedInternetAnswerText(answerText);
 
   return (
@@ -984,7 +1002,7 @@ function GroundedInternetAnswer({ internet, loading, error, onClose }) {
       <div className="internet-answer-top">
         <div className="internet-query">
           <span className="internet-pill">"{queryText}"</span>
-          <span className="muted tiny">Gemini + Google Search</span>
+          <span className="muted tiny">{providerLabel}</span>
         </div>
         <button type="button" className="secondary-btn small" onClick={onClose}>
           Yopish
@@ -1174,7 +1192,15 @@ export default function App() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.detail || "Backend xatolik qaytardi.");
+        const detail = data?.detail;
+        let message = "Backend xatolik qaytardi.";
+        if (typeof detail === "string") {
+          message = detail;
+        } else if (detail && typeof detail === "object") {
+          const m = typeof detail.message === "string" ? detail.message.trim() : "";
+          if (m) message = m;
+        }
+        throw new Error(message);
       }
 
       setInternetResult(data);
