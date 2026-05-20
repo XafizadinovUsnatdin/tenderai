@@ -11,6 +11,8 @@
     "sleepApplication": false,
     "useLegacyStacker": false,
     "ipv6EgressEnabled": false,
+    "healthcheckPath": "/api/health",
+    "healthcheckTimeout": 120,
     "multiRegionConfig": {
       "sfo": {
         "numReplicas": 1
@@ -20,4 +22,3 @@
     "restartPolicyMaxRetries": 10
   }
 }
-
