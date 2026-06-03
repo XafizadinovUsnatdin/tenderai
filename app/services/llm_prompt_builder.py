@@ -10,6 +10,7 @@ class LLMPromptBuilder:
         self,
         user_query: str,
         selected_product: ProductCandidate | None,
+        selected_products: list[ProductCandidate] | None,
         source_status: dict[str, Any],
         price_analysis: dict[str, Any],
         evidences_by_source: dict[str, list[Evidence]],
@@ -87,9 +88,21 @@ class LLMPromptBuilder:
             else None
         )
 
+        selected_products_block = [
+            {
+                "name": item.name,
+                "product_code": item.product_code,
+                "category_id": item.category_id,
+                "category_name": item.category_name,
+                "selection_reason": getattr(item, "selection_reason", None),
+            }
+            for item in (selected_products or [])
+        ]
+
         data = {
             "user_query": user_query,
             "selected_product": selected_product_block,
+            "selected_products": selected_products_block,
             "source_status": source_status,
             "price_analysis": price_analysis,
             "evidence_summaries": evidence_summaries,

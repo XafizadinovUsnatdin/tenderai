@@ -36,6 +36,23 @@ def _filter_by_period(evidences: list[Evidence], period_months: int) -> list[Evi
     return filtered
 
 
+def _dedupe_evidences(evidences: list[Evidence]) -> list[Evidence]:
+    unique: dict[tuple, Evidence] = {}
+
+    for ev in evidences:
+        key = (
+            ev.source_name,
+            ev.lot_id if ev.lot_id is not None else ev.lot_display_no,
+            ev.product_name or ev.category_name,
+            ev.provider_name,
+            ev.deal_date,
+        )
+        if key not in unique:
+            unique[key] = ev
+
+    return list(unique.values())
+
+
 def _pick_keyword_for_etender(keywords: list[str], user_query: str) -> str:
     """
     Etender portalida ko‘pincha kirillcha keyword aniqroq ishlaydi.
@@ -59,7 +76,7 @@ class SearchOrchestrator:
         self,
         user_query: str,
         keywords: list[str],
-        selected_product: ProductCandidate | None,
+        selected_products: list[ProductCandidate] | None,
         period_months: int,
         page_size: int = 20,
         max_pages: int = 3,
@@ -90,12 +107,13 @@ class SearchOrchestrator:
                 evidences_by_source[name] = []
                 return
 
-            if selected_product is None:
+            selected_products_list = [item for item in (selected_products or []) if item is not None]
+            if not selected_products_list:
                 source_status[name] = {
                     "status": "skipped",
                     "count": 0,
                     "price_eligible_count": 0,
-                    "message": "selected_product yo‘q, xarid.uzex qidiruvi o‘tkazib yuborildi.",
+                    "message": "selected_products yo‘q, xarid.uzex qidiruvi o‘tkazib yuborildi.",
                 }
                 evidences_by_source[name] = []
                 return
@@ -107,17 +125,21 @@ class SearchOrchestrator:
 
                 all_evidences: list[Evidence] = []
 
-                for year in years_to_scan:
-                    all_evidences.extend(
-                        await conn.collect_evidences_for_candidate(
-                            candidate=selected_product,
-                            year_id=year,
-                            page_size=page_size,
-                            max_pages=max_pages,
+                for candidate in selected_products_list:
+                    for year in years_to_scan:
+                        all_evidences.extend(
+                            await conn.collect_evidences_for_candidate(
+                                candidate=candidate,
+                                year_id=year,
+                                page_size=page_size,
+                                max_pages=max_pages,
+                            )
                         )
-                    )
 
-                evidences = _filter_by_period(all_evidences, period_months=period_months)
+                evidences = _filter_by_period(
+                    _dedupe_evidences(all_evidences),
+                    period_months=period_months,
+                )
 
                 evidences_by_source[name] = evidences
                 source_status[name] = {

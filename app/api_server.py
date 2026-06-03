@@ -104,6 +104,7 @@ class GenerateRequest(BaseModel):
     enabled_sources: list[str] | None = None
     # Optional: manual candidate selection from UI
     selected_candidate: dict[str, Any] | None = None
+    selected_candidates: list[dict[str, Any]] | None = None
     # Optional: pass candidates/keywords/search_plan from `/api/candidates` to avoid recomputing.
     candidates: list[dict[str, Any]] | None = None
     keywords: list[str] | None = None
@@ -1851,6 +1852,7 @@ async def generate_technical_task(request: GenerateRequest):
         enabled_sources = request.enabled_sources or _default_enabled_sources()
 
         selected = None
+        selected_products: list[ProductCandidate] = []
         candidates = []
 
         xarid_sources = {"xarid.uzex.uz", "xarid.uzex.uz/national", "xarid.uzex.uz/auction"}
@@ -1871,19 +1873,41 @@ async def generate_technical_task(request: GenerateRequest):
                 max_candidates=15,
             )
 
-        selected_from_request = request.selected_candidate or None
-        if isinstance(selected_from_request, dict) and selected_from_request:
-            picked = _candidate_from_json(selected_from_request, selection_reason="user_selected")
-            if picked:
-                picked_by_code = {c.product_code: c for c in (candidates or [])}
-                selected = picked_by_code.get(picked.product_code) or picked
-                selected.selection_reason = "user_selected"
+        picked_by_code = {c.product_code: c for c in (candidates or [])}
+
+        selected_list_from_request = request.selected_candidates or None
+        if isinstance(selected_list_from_request, list) and selected_list_from_request:
+            seen_codes: set[str] = set()
+            for item in selected_list_from_request[:20]:
+                if not isinstance(item, dict):
+                    continue
+                picked = _candidate_from_json(item, selection_reason="user_selected")
+                if not picked or picked.product_code in seen_codes:
+                    continue
+                resolved = picked_by_code.get(picked.product_code) or picked
+                resolved.selection_reason = "user_selected"
+                selected_products.append(resolved)
+                seen_codes.add(resolved.product_code)
+
+        if not selected_products:
+            selected_from_request = request.selected_candidate or None
+            if isinstance(selected_from_request, dict) and selected_from_request:
+                picked = _candidate_from_json(selected_from_request, selection_reason="user_selected")
+                if picked:
+                    resolved = picked_by_code.get(picked.product_code) or picked
+                    resolved.selection_reason = "user_selected"
+                    selected_products = [resolved]
+
+        if selected_products:
+            selected = selected_products[0]
         elif candidates:
             selected = await candidate_selector.select_best_candidate(
                 user_query=request.query,
                 search_plan=search_plan,
                 candidates=candidates,
             )
+            if selected is not None:
+                selected_products = [selected]
 
          
         orchestrator = SearchOrchestrator()
@@ -1891,7 +1915,7 @@ async def generate_technical_task(request: GenerateRequest):
         orchestration = await orchestrator.collect_all_sources(
             user_query=request.query,
             keywords=keywords,
-            selected_product=selected,
+            selected_products=selected_products,
             period_months=request.period_months,
             page_size=20,
             max_pages=3,
@@ -1922,6 +1946,17 @@ async def generate_technical_task(request: GenerateRequest):
             else None
         )
 
+        selected_products_json = [
+            {
+                "name": item.name,
+                "product_code": item.product_code,
+                "category_id": item.category_id,
+                "category_name": item.category_name,
+                "selection_reason": getattr(item, "selection_reason", None),
+            }
+            for item in selected_products
+        ]
+
         candidates_json = [
             {
                 "product_code": c.product_code,
@@ -1936,13 +1971,16 @@ async def generate_technical_task(request: GenerateRequest):
         candidate_confidence = None
         if candidates_json:
             selected_code = selected_product_dict.get("product_code") if selected_product_dict else None
+            selected_code_set = {item.get("product_code") for item in selected_products_json if item.get("product_code")}
             selected_rank = None
+            selected_ranks: list[int] = []
             selected_score = None
             for idx, c in enumerate(candidates_json, start=1):
                 if selected_code and c.get("product_code") == selected_code:
                     selected_rank = idx
                     selected_score = c.get("score")
-                    break
+                if c.get("product_code") in selected_code_set:
+                    selected_ranks.append(idx)
 
             top_score = candidates_json[0].get("score")
             second_score = candidates_json[1].get("score") if len(candidates_json) > 1 else None
@@ -1954,7 +1992,9 @@ async def generate_technical_task(request: GenerateRequest):
 
             candidate_confidence = {
                 "candidate_count": len(candidates_json),
+                "selected_count": len(selected_products_json),
                 "selected_rank": selected_rank,
+                "selected_ranks": selected_ranks,
                 "selected_score": selected_score,
                 "top_score": top_score,
                 "second_score": second_score,
@@ -2013,6 +2053,7 @@ async def generate_technical_task(request: GenerateRequest):
             "keywords": keywords,
             "search_plan": search_plan,
             "selected_product": selected_product_dict,
+            "selected_products": selected_products_json,
             "source_status": source_status,
             "price_analysis": price_analysis,
             "evidences_by_source": {
@@ -2024,6 +2065,7 @@ async def generate_technical_task(request: GenerateRequest):
         prompt = prompt_builder.build(
             user_query=request.query,
             selected_product=selected,
+            selected_products=selected_products,
             source_status=source_status,
             price_analysis=price_analysis,
             evidences_by_source=evidences_by_source,
@@ -2096,6 +2138,7 @@ async def generate_technical_task(request: GenerateRequest):
             "search_plan": search_plan,
             "candidate_selection_reason": getattr(selected, "selection_reason", None) if selected else None,
             "selected_product": selected_product_dict,
+            "selected_products": selected_products_json,
             "candidates": candidates_json,
             "candidate_confidence": candidate_confidence,
             "source_status": source_status,

@@ -891,7 +891,7 @@ export default function App() {
   const [step, setStep] = useState("");
   const [error, setError] = useState("");
   const [candidateResult, setCandidateResult] = useState(null);
-  const [selectedCandidateCode, setSelectedCandidateCode] = useState("");
+  const [selectedCandidateCodes, setSelectedCandidateCodes] = useState([]);
   const [result, setResult] = useState(null);
   const [activeTab, setActiveTab] = useState("result");
   const [activeEvidenceSource, setActiveEvidenceSource] = useState("all");
@@ -904,6 +904,16 @@ export default function App() {
   function toggleSource(source) {
     setEnabledSources((prev) =>
       prev.includes(source) ? prev.filter((s) => s !== source) : [...prev, source]
+    );
+  }
+
+  function toggleCandidateSelection(code) {
+    const normalized = String(code || "").trim();
+    if (!normalized) return;
+    setSelectedCandidateCodes((prev) =>
+      prev.includes(normalized)
+        ? prev.filter((item) => item !== normalized)
+        : [...prev, normalized]
     );
   }
 
@@ -921,7 +931,7 @@ export default function App() {
     setLoading(true);
     setError("");
     setCandidateResult(null);
-    setSelectedCandidateCode("");
+    setSelectedCandidateCodes([]);
     setResult(null);
     setShowInternetAnswer(false);
     setActiveTab("result");
@@ -967,7 +977,7 @@ export default function App() {
 
       const list = Array.isArray(data?.candidates) ? data.candidates : [];
       setCandidateResult(data);
-      setSelectedCandidateCode(String(list?.[0]?.product_code || ""));
+      setSelectedCandidateCodes(list?.[0]?.product_code ? [String(list[0].product_code)] : []);
       setStep("");
     } catch (err) {
       setError(err.message);
@@ -990,9 +1000,10 @@ export default function App() {
     }
 
     const candidates = Array.isArray(candidateResult?.candidates) ? candidateResult.candidates : [];
-    const selectedCandidate =
-      candidates.find((c) => String(c?.product_code || "") === String(selectedCandidateCode || "")) ||
-      null;
+    const selectedCandidates = candidates.filter((c) =>
+      selectedCandidateCodes.includes(String(c?.product_code || "").trim())
+    );
+    const selectedCandidate = selectedCandidates[0] || null;
 
     setLoading(true);
     setError("");
@@ -1025,6 +1036,7 @@ export default function App() {
           period_months: Number(periodMonths),
           enabled_sources: enabledSources,
           selected_candidate: selectedCandidate,
+          selected_candidates: selectedCandidates,
           candidates,
           keywords: candidateResult?.keywords,
           search_plan: candidateResult?.search_plan,
@@ -1107,7 +1119,12 @@ export default function App() {
     }
   }
 
-  const selected = result?.selected_product;
+  const selectedProducts = useMemo(() => {
+    const list = Array.isArray(result?.selected_products) ? result.selected_products.filter(Boolean) : [];
+    if (list.length > 0) return list;
+    return result?.selected_product ? [result.selected_product] : [];
+  }, [result]);
+  const selected = selectedProducts[0] || null;
   const candidates = result?.candidates || [];
   const candidateConfidence = result?.candidate_confidence || null;
   const evidences = result?.evidences || [];
@@ -1153,9 +1170,18 @@ export default function App() {
 
   const alternativeCandidates = useMemo(() => {
     const list = Array.isArray(candidates) ? candidates : [];
-    const selectedCode = selected?.product_code;
-    return list.filter((c) => c?.product_code && c.product_code !== selectedCode).slice(0, 8);
-  }, [candidates, selected?.product_code]);
+    const selectedCodes = new Set(
+      selectedProducts
+        .map((item) => String(item?.product_code || "").trim())
+        .filter(Boolean)
+    );
+    return list
+      .filter((c) => {
+        const code = String(c?.product_code || "").trim();
+        return code && !selectedCodes.has(code);
+      })
+      .slice(0, 8);
+  }, [candidates, selectedProducts]);
 
   const auditFlags = useMemo(() => {
     const list = Array.isArray(evidences) ? evidences : [];
@@ -1530,11 +1556,48 @@ export default function App() {
           <SectionTitle
             icon={<PackageSearch size={22} />}
             title="Alternative candidates"
-            subtitle="Xarid katalogidan topilgan variantlardan bittasini tanlang"
+            subtitle="Xarid katalogidan topilgan variantlardan bir yoki bir nechtasini tanlang"
           />
 
           {Array.isArray(candidateResult?.candidates) && candidateResult.candidates.length > 0 ? (
             <>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  gap: 12,
+                  alignItems: "center",
+                  marginTop: 12,
+                  flexWrap: "wrap",
+                }}
+              >
+                <span className="muted">
+                  Tanlangan kandidatlar: <b>{selectedCandidateCodes.length}</b>
+                </span>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    className="secondary-btn"
+                    onClick={() =>
+                      setSelectedCandidateCodes(
+                        candidateResult.candidates
+                          .map((item) => String(item?.product_code || "").trim())
+                          .filter(Boolean)
+                      )
+                    }
+                  >
+                    Hammasini tanlash
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-btn"
+                    onClick={() => setSelectedCandidateCodes([])}
+                  >
+                    Tozalash
+                  </button>
+                </div>
+              </div>
+
               <div className="table-wrap" style={{ marginTop: 12 }}>
                 <table>
                   <thead>
@@ -1546,15 +1609,14 @@ export default function App() {
                   <tbody>
                     {candidateResult.candidates.map((c) => {
                       const code = String(c?.product_code || "").trim();
-                      const checked = code && code === String(selectedCandidateCode || "");
+                      const checked = code && selectedCandidateCodes.includes(code);
                       return (
                         <tr key={code || JSON.stringify(c)}>
                           <td>
                             <input
-                              type="radio"
-                              name="candidate_pick"
+                              type="checkbox"
                               checked={checked}
-                              onChange={() => setSelectedCandidateCode(code)}
+                              onChange={() => toggleCandidateSelection(code)}
                             />
                           </td>
                           <td>
@@ -1571,6 +1633,10 @@ export default function App() {
                   </tbody>
                 </table>
               </div>
+
+              <p className="muted" style={{ marginTop: 12 }}>
+                Hech narsa tanlanmasa, tizim eng mos kandidatni avtomatik tanlaydi.
+              </p>
 
               <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}>
                 <button
@@ -1672,14 +1738,22 @@ export default function App() {
                 <Card>
                   <SectionTitle
                     icon={<CheckCircle2 size={22} />}
-                    title="Tanlangan mahsulot"
-                    subtitle="Xarid katalogidan eng mos product_code"
+                    title={selectedProducts.length > 1 ? "Tanlangan mahsulotlar" : "Tanlangan mahsulot"}
+                    subtitle="Xarid katalogidan tanlangan product_code lar"
                   />
-                  <div className="product-box">
-                    <h3>{selected?.name}</h3>
-                    <p>{selected?.category_name}</p>
-                    <code>{selected?.product_code}</code>
-                  </div>
+                  {selectedProducts.length > 0 ? (
+                    <div style={{ display: "grid", gap: 12 }}>
+                      {selectedProducts.map((item) => (
+                        <div className="product-box" key={item?.product_code || item?.name}>
+                          <h3>{item?.name}</h3>
+                          <p>{item?.category_name}</p>
+                          <code>{item?.product_code}</code>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="muted">Mahsulot tanlanmagan</p>
+                  )}
                 </Card>
 
                 <Card>
@@ -1737,6 +1811,10 @@ export default function App() {
                         <StatCard
                           label="Candidate soni"
                           value={candidateConfidence.candidate_count ?? candidates.length}
+                        />
+                        <StatCard
+                          label="Tanlangan"
+                          value={candidateConfidence?.selected_count ?? selectedProducts.length}
                         />
                       </div>
                     )}
