@@ -27,18 +27,6 @@ const INTERNET_API_URL =
   import.meta.env.VITE_INTERNET_API_URL ||
   (import.meta.env.PROD ? "/api/internet" : "http://127.0.0.1:8000/api/internet");
 
-function getDefaultEvidenceFilters() {
-  return {
-    searchText: "",
-    region: "all",
-    status: "all",
-    providerText: "",
-    dateFrom: "",
-    dateTo: "",
-    sortBy: "date_desc",
-  };
-}
-
 function downloadJson(data, filename = "tenderai_result.json") {
   const blob = new Blob([JSON.stringify(data, null, 2)], {
     type: "application/json",
@@ -123,13 +111,6 @@ function parseDateSafe(value) {
   return date;
 }
 
-function parseDateInput(value) {
-  if (!value) return null;
-  const date = new Date(`${value}T00:00:00`);
-  if (Number.isNaN(date.getTime())) return null;
-  return date;
-}
-
 function buildEvidenceFileUrl(ev, filePath) {
   const raw = String(filePath ?? "").trim();
   if (!raw) return null;
@@ -145,84 +126,15 @@ function buildEvidenceFileUrl(ev, filePath) {
   return `/${cleanPath}`;
 }
 
-function evText(ev) {
-  return normalizeText(
-    [
-      ev?.source_name,
-      ev?.source_type,
-      ev?.lot_display_no,
-      ev?.product_name,
-      ev?.category_name,
-      ev?.customer_name,
-      ev?.customer_inn,
-      ev?.provider_name,
-      ev?.provider_inn,
-      ev?.region,
-      ev?.deal_status_name,
-      ev?.payment_status,
-      ev?.condition,
-      ev?.contract_file_name,
-      ev?.contract_file_path,
-      ev?.additional_protocol_file_name,
-      ev?.additional_protocol_file_path,
-    ]
-      .filter(Boolean)
-      .join(" | ")
-  );
-}
+function formatCandidateLabel(candidate) {
+  const name = String(candidate?.name || "").trim();
+  const category = String(candidate?.category_name || "").trim();
 
-function buildEvidenceFilterOptions(evidences) {
-  const regions = new Set();
-  const statuses = new Set();
-
-  for (const ev of evidences || []) {
-    if (ev?.region) regions.add(ev.region);
-    if (ev?.deal_status_name) statuses.add(ev.deal_status_name);
+  if (name && category && normalizeText(name) !== normalizeText(category)) {
+    return `${name} - ${category}`;
   }
 
-  return {
-    regions: Array.from(regions).sort((a, b) => String(a).localeCompare(String(b))),
-    statuses: Array.from(statuses).sort((a, b) => String(a).localeCompare(String(b))),
-  };
-}
-
-function applyEvidenceFilters(evidences, filters) {
-  const list = Array.isArray(evidences) ? evidences : [];
-
-  const q = normalizeText(filters?.searchText);
-  const providerQ = normalizeText(filters?.providerText);
-  const region = filters?.region || "all";
-  const status = filters?.status || "all";
-
-  const from = parseDateInput(filters?.dateFrom);
-  const to = parseDateInput(filters?.dateTo);
-
-  const filtered = list.filter((ev) => {
-    if (q && !evText(ev).includes(q)) return false;
-
-    if (providerQ) {
-      const providerText = normalizeText(
-        [ev?.provider_name, ev?.provider_inn].filter(Boolean).join(" ")
-      );
-      if (!providerText.includes(providerQ)) return false;
-    }
-
-    if (region !== "all" && (ev?.region || "") !== region) return false;
-    if (status !== "all" && (ev?.deal_status_name || "") !== status) return false;
-
-    const d = parseDateSafe(ev?.deal_date);
-    if (from && (!d || d < from)) return false;
-    if (to) {
-      const toEnd = new Date(to);
-      toEnd.setHours(23, 59, 59, 999);
-      if (!d || d > toEnd) return false;
-    }
-
-    return true;
-  });
-
-  const sortBy = filters?.sortBy || "date_desc";
-  return sortEvidences(filtered, sortBy);
+  return name || category || "—";
 }
 
 function sortEvidences(evidences, sortBy) {
@@ -525,113 +437,6 @@ function Tabs({ value, onChange, items }) {
           {item.label}
         </button>
       ))}
-    </div>
-  );
-}
-
-function EvidenceFilters({ value, onChange, options, totalCount, filteredCount, onReset, onDownloadCsv }) {
-  const regions = options?.regions || [];
-  const statuses = options?.statuses || [];
-
-  return (
-    <div className="evidence-tools">
-      <div className="evidence-tools-top">
-        <div className="evidence-summary">
-          Ko‘rsatilmoqda: <b>{filteredCount}</b> / {totalCount}
-        </div>
-        <div className="evidence-actions">
-          <button
-            type="button"
-            className="secondary-btn small"
-            onClick={onDownloadCsv}
-            disabled={!filteredCount}
-          >
-            CSV yuklab olish
-          </button>
-          <button type="button" className="secondary-btn small" onClick={onReset}>
-            Filtrlarni tozalash
-          </button>
-        </div>
-      </div>
-
-      <div className="filters-grid">
-        <div className="filter-group wide">
-          <label>Qidiruv</label>
-          <input
-            value={value.searchText}
-            onChange={(e) => onChange({ ...value, searchText: e.target.value })}
-            placeholder="Lot, mahsulot, buyurtmachi, provider, INN, status..."
-          />
-        </div>
-
-        <div className="filter-group">
-          <label>Region</label>
-          <select
-            value={value.region}
-            onChange={(e) => onChange({ ...value, region: e.target.value })}
-          >
-            <option value="all">Barchasi</option>
-            {regions.map((r) => (
-              <option key={r} value={r}>
-                {r}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="filter-group">
-          <label>Status</label>
-          <select
-            value={value.status}
-            onChange={(e) => onChange({ ...value, status: e.target.value })}
-          >
-            <option value="all">Barchasi</option>
-            {statuses.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="filter-group">
-          <label>Provider</label>
-          <input
-            value={value.providerText}
-            onChange={(e) => onChange({ ...value, providerText: e.target.value })}
-            placeholder="Nom yoki INN"
-          />
-        </div>
-
-        <div className="filter-group">
-          <label>From</label>
-          <input
-            type="date"
-            value={value.dateFrom}
-            onChange={(e) => onChange({ ...value, dateFrom: e.target.value })}
-          />
-        </div>
-
-        <div className="filter-group">
-          <label>To</label>
-          <input
-            type="date"
-            value={value.dateTo}
-            onChange={(e) => onChange({ ...value, dateTo: e.target.value })}
-          />
-        </div>
-
-        <div className="filter-group">
-          <label>Saralash</label>
-          <select
-            value={value.sortBy}
-            onChange={(e) => onChange({ ...value, sortBy: e.target.value })}
-          >
-            <option value="date_desc">Sana (yangi → eski)</option>
-            <option value="date_asc">Sana (eski → yangi)</option>
-          </select>
-        </div>
-      </div>
     </div>
   );
 }
@@ -992,11 +797,11 @@ function GroundedInternetAnswer({ internet, loading, error, onClose }) {
   const providerLabel =
     provider === "openrouter"
       ? isCyrillicQuery
-        ? "Интернет‑поиск (AI)"
+        ? "Интернет?поиск (AI)"
         : "Internet qidiruvi (AI)"
       : provider === "free_search"
         ? isCyrillicQuery
-          ? "Интернет‑поиск (бесплатно)"
+          ? "Интернет?поиск (бесплатно)"
           : "Internet qidiruvi (bepul)"
         : isCyrillicQuery
           ? "Gemini + Google поиск"
@@ -1090,7 +895,6 @@ export default function App() {
   const [result, setResult] = useState(null);
   const [activeTab, setActiveTab] = useState("result");
   const [activeEvidenceSource, setActiveEvidenceSource] = useState("all");
-  const [evidenceFilters, setEvidenceFilters] = useState(() => getDefaultEvidenceFilters());
   const [supplierViewer, setSupplierViewer] = useState(null);
   const [showInternetAnswer, setShowInternetAnswer] = useState(false);
   const [internetLoading, setInternetLoading] = useState(false);
@@ -1122,8 +926,6 @@ export default function App() {
     setShowInternetAnswer(false);
     setActiveTab("result");
     setActiveEvidenceSource("all");
-    setEvidenceFilters(getDefaultEvidenceFilters());
-
     const fakeSteps = [
       "Mahsulot turi aniqlanmoqda...",
       "Xarid.uzex katalogidan candidatlar olinmoqda...",
@@ -1198,8 +1000,6 @@ export default function App() {
     setShowInternetAnswer(false);
     setActiveTab("result");
     setActiveEvidenceSource("all");
-    setEvidenceFilters(getDefaultEvidenceFilters());
-
     const fakeSteps = [
       "Tender manbalaridan dalillar yig‘ilmoqda...",
       "Narxlar tahlil qilinmoqda...",
@@ -1311,8 +1111,8 @@ export default function App() {
   const candidates = result?.candidates || [];
   const candidateConfidence = result?.candidate_confidence || null;
   const evidences = result?.evidences || [];
-  const sourceSummaries = result?.source_summaries || {};
   const sourceStatus = result?.source_status || {};
+  const searchPlan = result?.search_plan || candidateResult?.search_plan || null;
 
   const supplierRows = useMemo(
     () => buildSupplierPerformance(evidences),
@@ -1327,29 +1127,29 @@ export default function App() {
     const merged = [...technicalParams, ...technicalHighlights].map((t) => String(t || "").trim()).filter(Boolean);
     return Array.from(new Set(merged)).slice(0, 28);
   }, [technicalParams, technicalHighlights]);
-
-  const sourcesForPanel = useMemo(() => {
-    const preferredOrder = [
-      "xarid.uzex.uz",
-      "xarid.uzex.uz/national",
-      "xarid.uzex.uz/auction",
-      "etender.uzex.uz",
+  const searchKeywords = useMemo(() => {
+    const fromPlan = [
+      ...(Array.isArray(searchPlan?.search_keywords_ru) ? searchPlan.search_keywords_ru : []),
+      ...(Array.isArray(searchPlan?.search_keywords_uz) ? searchPlan.search_keywords_uz : []),
     ];
+    const fallback = Array.isArray(result?.keywords)
+      ? result.keywords
+      : Array.isArray(candidateResult?.keywords)
+        ? candidateResult.keywords
+        : [];
 
-    const list = Array.isArray(result?.enabled_sources) ? result.enabled_sources : enabledSources;
-    const uniq = Array.from(new Set(list.filter(Boolean)));
-    const ordered = [];
-
-    for (const s of preferredOrder) {
-      if (uniq.includes(s)) ordered.push(s);
-    }
-
-    for (const s of uniq) {
-      if (!ordered.includes(s)) ordered.push(s);
-    }
-
-    return ordered;
-  }, [enabledSources, result?.enabled_sources]);
+    return Array.from(
+      new Set(
+        [...fromPlan, ...fallback]
+          .map((item) => String(item || "").trim())
+          .filter(Boolean)
+      )
+    ).slice(0, 12);
+  }, [searchPlan, result?.keywords, candidateResult?.keywords]);
+  const excludeKeywords = useMemo(() => {
+    const list = Array.isArray(searchPlan?.exclude_keywords_ru) ? searchPlan.exclude_keywords_ru : [];
+    return Array.from(new Set(list.map((item) => String(item || "").trim()).filter(Boolean))).slice(0, 8);
+  }, [searchPlan]);
 
   const alternativeCandidates = useMemo(() => {
     const list = Array.isArray(candidates) ? candidates : [];
@@ -1421,14 +1221,9 @@ export default function App() {
     return evidences.filter((ev) => ev?.source_name === activeEvidenceSource);
   }, [activeEvidenceSource, evidences, evidencesBySource]);
 
-  const evidenceFilterOptions = useMemo(
-    () => buildEvidenceFilterOptions(evidencesForActiveSource),
+  const sortedEvidencesForActiveSource = useMemo(
+    () => sortEvidences(evidencesForActiveSource, "date_desc"),
     [evidencesForActiveSource]
-  );
-
-  const filteredEvidencesForActiveSource = useMemo(
-    () => applyEvidenceFilters(evidencesForActiveSource, evidenceFilters),
-    [evidencesForActiveSource, evidenceFilters]
   );
 
   return (
@@ -1698,36 +1493,6 @@ export default function App() {
                   Internet
                 </button>
               </div>
-              <div className="source-presets">
-                <button
-                  type="button"
-                  className="secondary-btn small"
-                  onClick={() =>
-                    setEnabledSources([
-                      "xarid.uzex.uz",
-                      "xarid.uzex.uz/national",
-                      "xarid.uzex.uz/auction",
-                      "etender.uzex.uz",
-                    ])
-                  }
-                >
-                  Hammasi
-                </button>
-                <button
-                  type="button"
-                  className="secondary-btn small"
-                  onClick={() => setEnabledSources(["xarid.uzex.uz", "xarid.uzex.uz/national"])}
-                >
-                  Xarid (shop+national)
-                </button>
-                <button
-                  type="button"
-                  className="secondary-btn small"
-                  onClick={() => setEnabledSources(["etender.uzex.uz", "xarid.uzex.uz/auction"])}
-                >
-                  Audit
-                </button>
-              </div>
             </div>
             <button className="primary-btn" disabled={loading}>
               {loading ? (
@@ -1775,10 +1540,7 @@ export default function App() {
                   <thead>
                     <tr>
                       <th>Tanlash</th>
-                      <th>product_code</th>
-                      <th>Nomi</th>
-                      <th>Kategoriya</th>
-                      <th>Score</th>
+                      <th>Kandidat</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1796,14 +1558,12 @@ export default function App() {
                             />
                           </td>
                           <td>
-                            <code>{code || "—"}</code>
-                          </td>
-                          <td>{c?.name || "—"}</td>
-                          <td>{c?.category_name || "—"}</td>
-                          <td>
-                            {typeof c?.score === "number"
-                              ? c.score.toFixed(2)
-                              : String(c?.score ?? "—")}
+                            <div style={{ display: "grid", gap: 4 }}>
+                              <strong>{formatCandidateLabel(c)}</strong>
+                              <div className="muted tiny">
+                                <code>{code || "—"}</code>
+                              </div>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -1928,64 +1688,55 @@ export default function App() {
                     title="Qidiruv rejasi"
                     subtitle="LLM mahsulotni qanday tushundi"
                   />
-                  <div className="chips">
-                    {result.keywords?.map((k) => (
-                      <span key={k}>{k}</span>
-                    ))}
+                  <div className="object-list">
+                    <div className="object-row">
+                      <b>Mahsulot turi</b>
+                      <span>{searchPlan?.detected_item_type || "—"}</span>
+                    </div>
+                    <div className="object-row">
+                      <b>Brand / model</b>
+                      <span>
+                        {[searchPlan?.brand, searchPlan?.model]
+                          .map((item) => String(item || "").trim())
+                          .filter(Boolean)
+                          .join(" / ") || "—"}
+                      </span>
+                    </div>
+                    <div className="object-row">
+                      <b>Izoh</b>
+                      <span>{searchPlan?.notes || "—"}</span>
+                    </div>
                   </div>
-                </Card>
-
-                <Card>
-                  <SectionTitle
-                    icon={<Globe size={22} />}
-                    title="Manbalar"
-                    subtitle="Tender saytlardan olingan dalillar"
-                  />
-                  <div className="sources-panel">
-                    {sourcesForPanel.map((s) => {
-                      const summary = sourceSummaries?.[s] || {};
-                      const status = sourceStatus?.[s]?.status || null;
-                      const count = summary?.total_evidences ?? sourceStatus?.[s]?.count ?? 0;
-                      return (
-                        <div className="source-row" key={s}>
-                          <div className="source-row-left">
-                            <div className="source-name">{s}</div>
-                            <div className="muted tiny">Evidence: {count}</div>
-                          </div>
-                          {status && <span className={`status-badge ${status}`}>{status}</span>}
-                        </div>
-                      );
-                    })}
-                  </div>
+                  {searchKeywords.length > 0 && (
+                    <div className="chips" style={{ marginTop: 12 }}>
+                      {searchKeywords.map((keyword) => (
+                        <span key={keyword}>{keyword}</span>
+                      ))}
+                    </div>
+                  )}
+                  {excludeKeywords.length > 0 && (
+                    <div className="object-list" style={{ marginTop: 12 }}>
+                      <div className="object-row">
+                        <b>Exclude</b>
+                        <span>{excludeKeywords.join(", ")}</span>
+                      </div>
+                    </div>
+                  )}
                 </Card>
 
                 {Array.isArray(candidates) && candidates.length > 0 && (
-                  <Card className="full">
+                  <Card className="full compact-card">
                     <SectionTitle
                       icon={<PackageSearch size={22} />}
                       title="Alternative candidates"
                       subtitle="Xarid katalogidan topilgan boshqa variantlar"
                     />
 
-                    {candidateConfidence && (
+                    {(candidateConfidence || candidates.length > 0) && (
                       <div className="stats-grid">
                         <StatCard
                           label="Candidate soni"
                           value={candidateConfidence.candidate_count ?? candidates.length}
-                        />
-                        <StatCard
-                          label="Tanlangan rank"
-                          value={candidateConfidence.selected_rank ?? "—"}
-                          hint="1 = eng yuqori score"
-                        />
-                        <StatCard
-                          label="Top-2 score farqi"
-                          value={
-                            typeof candidateConfidence.score_gap_top_vs_second === "number"
-                              ? candidateConfidence.score_gap_top_vs_second.toFixed(2)
-                              : "—"
-                          }
-                          hint="Katta bo‘lsa, tanlov aniqroq"
                         />
                       </div>
                     )}
@@ -1995,22 +1746,19 @@ export default function App() {
                         <table>
                           <thead>
                             <tr>
-                              <th>product_code</th>
-                              <th>Nomi</th>
-                              <th>Kategoriya</th>
-                              <th>Score</th>
+                              <th>Kandidat</th>
                             </tr>
                           </thead>
                           <tbody>
                             {alternativeCandidates.map((c) => (
                               <tr key={c.product_code}>
                                 <td>
-                                  <code>{c.product_code}</code>
-                                </td>
-                                <td>{c.name || "—"}</td>
-                                <td>{c.category_name || "—"}</td>
-                                <td>
-                                  {typeof c.score === "number" ? c.score.toFixed(2) : String(c.score ?? "—")}
+                                  <div style={{ display: "grid", gap: 4 }}>
+                                    <strong>{formatCandidateLabel(c)}</strong>
+                                    <div className="muted tiny">
+                                      <code>{c.product_code}</code>
+                                    </div>
+                                  </div>
                                 </td>
                               </tr>
                             ))}
@@ -2042,21 +1790,6 @@ export default function App() {
               </div>
 
               <TechnicalTask task={result.technical_task} />
-
-              {result.validation_warnings?.length > 0 && (
-                <Card className="warning-card">
-                  <SectionTitle
-                    icon={<AlertTriangle size={22} />}
-                    title="Validator ogohlantirishlari"
-                    subtitle="LLM javobida tekshirilishi kerak bo‘lgan joylar"
-                  />
-                  <ul className="nice-list">
-                    {result.validation_warnings.map((warning, index) => (
-                      <li key={index}>{warning}</li>
-                    ))}
-                  </ul>
-                </Card>
-              )}
 
               <Card className="full">
                 <SectionTitle
@@ -2227,23 +1960,7 @@ export default function App() {
                 onChange={setActiveEvidenceSource}
                 items={evidenceTabItems}
               />
-              <EvidenceFilters
-                value={evidenceFilters}
-                onChange={setEvidenceFilters}
-                options={evidenceFilterOptions}
-                totalCount={evidencesForActiveSource.length}
-                filteredCount={filteredEvidencesForActiveSource.length}
-                onReset={() => setEvidenceFilters(getDefaultEvidenceFilters())}
-                onDownloadCsv={() =>
-                  downloadCsv(
-                    filteredEvidencesForActiveSource,
-                    `${String(query || "query").replace(/[^\w\-]+/g, "_")}_${
-                      activeEvidenceSource || "all"
-                    }_evidences.csv`
-                  )
-                }
-              />
-              <EvidenceTable evidences={filteredEvidencesForActiveSource} />
+              <EvidenceTable evidences={sortedEvidencesForActiveSource} />
             </Card>
           )}
         </>
@@ -2251,3 +1968,4 @@ export default function App() {
     </div>
   );
 }
+

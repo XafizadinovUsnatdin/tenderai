@@ -62,12 +62,12 @@ body {
 }
 
 .card.compact-card {
-  padding: 14px;
-  border-radius: 20px;
+  padding: 10px 12px;
+  border-radius: 16px;
 }
 
 .card.compact-card .section-title {
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 
 .search-card {
@@ -294,13 +294,6 @@ input:focus,
   margin-top: 10px;
   display: flex;
   justify-content: flex-start;
-}
-
-.source-presets {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-top: 10px;
 }
 
 .status-badge {
@@ -641,18 +634,18 @@ td {
 
 .source-status-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
 }
 
 .source-status-item {
   border: 1px solid #e2e8f0;
   background: #f8fafc;
-  border-radius: 18px;
-  padding: 10px 12px;
+  border-radius: 14px;
+  padding: 8px 10px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .source-status-top {
@@ -672,72 +665,6 @@ td {
   display: flex;
   flex-direction: column;
   gap: 2px;
-}
-
-.evidence-tools {
-  margin-top: 14px;
-  margin-bottom: 14px;
-  padding: 14px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 18px;
-}
-
-.evidence-tools-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-bottom: 12px;
-}
-
-.evidence-actions {
-  display: inline-flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.evidence-summary {
-  font-weight: 900;
-  color: #334155;
-}
-
-.filters-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.filter-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 180px;
-  flex: 1;
-}
-
-.filter-group.wide {
-  min-width: 320px;
-  flex: 2;
-}
-
-.filter-group label {
-  font-size: 12px;
-  font-weight: 900;
-  color: #334155;
-}
-
-.filter-group input,
-.filter-group select {
-  height: 40px;
-  border-radius: 12px;
-  font-size: 13px;
-}
-
-.filter-group.checks {
-  min-width: 260px;
-  flex: 2;
 }
 
 .check-row {

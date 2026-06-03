@@ -127,20 +127,22 @@ Eslatma: `.env` ni gitga commit qilmang.
 - `technical_task` — LLM generatsiya qilgan TT (JSON)
 - `validation_warnings` — guardrail ogohlantirishlar
 
-### Internet (Gemini + Google Search)
+### Internet (Qidiruv → Gemini)
 
-Frontend’dagi **Internet** tugmasi `POST /api/internet` endpointiga murojaat qiladi. Endpoint Gemini API’dan Google Search grounding bilan:
-- qisqa tavsif + “Asosiy xarakteristikalar”
-- `groundingChunks` orqali manbalar (URL) ni qaytaradi.
+Frontend’dagi **Internet** tugmasi `POST /api/internet` endpointiga murojaat qiladi. Endpoint odatda:
+- DuckDuckGo Lite qidiruvi + oddiy extraction orqali manbalar (URL) va kontekstni oladi (**bepul**, API key kerak emas).
+- Agar Gemini sozlangan bo‘lsa, shu kontekstni Gemini qayta yozadi/strukturaydi (`provider: internet_then_gemini`).
 
-Kerakli env:
+Agar bepul qidiruvdan manbalar chiqmasa, endpoint Gemini’ning Google Search grounding rejimiga (keyin OpenRouter, keyin free) fallback qiladi.
+
+Kerakli env (Gemini bosqichi uchun):
 - `GEMINI_API_KEY`
 - `GEMINI_MODEL`
 - `GEMINI_MAX_OUTPUT_TOKENS`
 
 Fallback:
-- Agar Gemini ishlamasa (quota/429 va h.k.), endpoint avtomatik ravishda OpenRouter web search grounding’ga o‘tadi. Kerakli env: `OPENROUTER_API_KEY` (ixtiyoriy: `OPENROUTER_INTERNET_MODEL`). Eslatma: OpenRouter’da web search odatda kredit sarflaydi.
-- Agar OpenRouter ham ishlamasa (kalit yo‘q yoki limit), endpoint **free** rejimga o‘tadi: DuckDuckGo Lite qidiruvi + oddiy extraction (API key kerak emas, sifat LLM’dan pastroq).
+- Gemini ishlamasa (quota/429 va h.k.), endpoint OpenRouter web search grounding’ga o‘tadi. Kerakli env: `OPENROUTER_API_KEY` (ixtiyoriy: `OPENROUTER_INTERNET_MODEL`). Eslatma: OpenRouter’da web search odatda kredit sarflaydi.
+- OpenRouter ham ishlamasa (kalit yo‘q yoki limit), endpoint faqat DuckDuckGo Lite + extraction natijasini qaytaradi (sifat LLM’dan pastroq).
 
 Troubleshooting:
 - `429 RESOURCE_EXHAUSTED` va xabarda `limit: 0` bo‘lsa — bu odatda quota/billing tomonda (kalit/proyekt/model tier) muammo. Quota/billing’ni tekshiring yoki `GEMINI_MODEL` ni almashtiring.

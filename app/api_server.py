@@ -121,21 +121,75 @@ class InternetRequest(BaseModel):
 
 
 def extract_json(text: str) -> dict[str, Any]:
-    text = text.strip()
+    def _strip_code_fences(value: str) -> str:
+        value = value.strip()
+        if value.startswith("```"):
+            value = re.sub(r"^```json", "", value, flags=re.IGNORECASE).strip()
+            value = re.sub(r"^```", "", value).strip()
+            value = re.sub(r"```$", "", value).strip()
+        return value
 
-    if text.startswith("```"):
-        text = re.sub(r"^```json", "", text, flags=re.IGNORECASE).strip()
-        text = re.sub(r"^```", "", text).strip()
-        text = re.sub(r"```$", "", text).strip()
+    def _extract_balanced_object(value: str) -> str | None:
+        start = value.find("{")
+        if start == -1:
+            return None
 
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        match = re.search(r"\{.*\}", text, flags=re.DOTALL)
-        if not match:
-            raise
+        depth = 0
+        in_string = False
+        escaped = False
 
-        return json.loads(match.group(0))
+        for index in range(start, len(value)):
+            char = value[index]
+
+            if in_string:
+                if escaped:
+                    escaped = False
+                elif char == "\\":
+                    escaped = True
+                elif char == '"':
+                    in_string = False
+                continue
+
+            if char == '"':
+                in_string = True
+            elif char == "{":
+                depth += 1
+            elif char == "}":
+                depth -= 1
+                if depth == 0:
+                    return value[start:index + 1]
+
+        return None
+
+    def _repair_common_json_issues(value: str) -> str:
+        repaired = re.sub(r",(\s*[}\]])", r"\1", value)
+        repaired = re.sub(r'(["}\]])(\s*)(?="[^"]+"\s*:)', r"\1,\2", repaired)
+        repaired = re.sub(r'([0-9])(\s*)(?="[^"]+"\s*:)', r"\1,\2", repaired)
+        repaired = re.sub(r'\b(true|false|null)(\s*)(?="[^"]+"\s*:)', r"\1,\2", repaired)
+        return repaired
+
+    raw_text = _strip_code_fences(text)
+    candidates = [raw_text]
+
+    balanced = _extract_balanced_object(raw_text)
+    if balanced and balanced not in candidates:
+        candidates.append(balanced)
+
+    if balanced:
+        repaired = _repair_common_json_issues(balanced)
+        if repaired not in candidates:
+            candidates.append(repaired)
+
+    last_error: json.JSONDecodeError | None = None
+    for candidate in candidates:
+        try:
+            return json.loads(candidate)
+        except json.JSONDecodeError as exc:
+            last_error = exc
+
+    if last_error is not None:
+        raise last_error
+    raise json.JSONDecodeError("No JSON object found", raw_text, 0)
 
 
 _RU_STOPWORDS = {
@@ -337,6 +391,8 @@ async def call_openrouter(prompt: str) -> str:
         "temperature": 0.2,
         # OpenRouter: limit completion tokens to avoid 402 on low credits.
         "max_tokens": max_tokens,
+        # Ask OpenRouter for JSON mode when supported (helps avoid JSONDecodeError).
+        "response_format": {"type": "json_object"},
     }
 
     headers = {
@@ -351,13 +407,173 @@ async def call_openrouter(prompt: str) -> str:
             json=payload,
         )
 
+        # Some providers/models may not support `response_format`. Retry without it.
+        if response.status_code in {400, 422}:
+            body_text = (response.text or "")[:1000].lower()
+            if "response_format" in body_text or "json_object" in body_text:
+                payload_no_format = dict(payload)
+                payload_no_format.pop("response_format", None)
+                response = await client.post(
+                    f"{base_url}/chat/completions",
+                    headers=headers,
+                    json=payload_no_format,
+                )
+
     if response.status_code != 200:
         raise RuntimeError(
             f"OpenRouter error {response.status_code}: {response.text[:1000]}"
         )
 
     data = response.json()
-    return data["choices"][0]["message"]["content"]
+    choice0 = data["choices"][0] if isinstance(data.get("choices"), list) and data.get("choices") else {}
+    finish_reason = choice0.get("finish_reason") if isinstance(choice0, dict) else None
+    content = (choice0.get("message") or {}).get("content") if isinstance(choice0, dict) else None
+    content = content if isinstance(content, str) else ""
+    content = content.strip()
+
+    # If the model was cut off, JSON parsing will often fail with "Unterminated string...".
+    if finish_reason == "length":
+        raise RuntimeError(
+            "OpenRouter javobi kesilib qoldi (finish_reason=length). "
+            "`.env` dagi `OPENROUTER_MAX_TOKENS` ni oshiring yoki boshqa model tanlang."
+        )
+
+    return content
+
+
+async def call_gemini_json(prompt: str, *, max_output_tokens: int | None = None) -> dict[str, Any]:
+    """
+    Uses Gemini to generate a JSON-only response for long structured outputs (e.g., `/api/generate`).
+    """
+    api_key = get_gemini_api_key()
+    model = get_gemini_model()
+    base_url = get_gemini_base_url()
+    api_version = get_gemini_api_version()
+    initial_max_tokens = max_output_tokens or get_gemini_max_output_tokens()
+
+    if not api_key:
+        raise RuntimeError(
+            "GEMINI_API_KEY topilmadi (env var bo?lishi kerak). "
+            "Local?da `.env` ga yozing, Railway/production?da esa Service Variables?da "
+            "`GEMINI_API_KEY` ni set qiling."
+        )
+
+    url = f"{base_url}/{api_version}/models/{model}:generateContent"
+    headers = {
+        "x-goog-api-key": api_key,
+        "Content-Type": "application/json",
+    }
+
+    retryable_statuses = {429, 500, 502, 503, 504}
+    max_attempts = 3
+    last_error: GeminiAPIError | None = None
+
+    token_budgets: list[int] = []
+    for budget in [initial_max_tokens, max(initial_max_tokens * 2, 8192)]:
+        if budget not in token_budgets:
+            token_budgets.append(budget)
+
+    async with httpx.AsyncClient(timeout=180) as client:
+        for token_budget in token_budgets:
+            data: dict[str, Any] | None = None
+            payload = {
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {
+                    "temperature": 0.2,
+                    "maxOutputTokens": token_budget,
+                    "responseMimeType": "application/json",
+                },
+            }
+
+            for attempt in range(1, max_attempts + 1):
+                response = await client.post(url, headers=headers, json=payload)
+                if response.status_code == 200:
+                    data = response.json()
+                    break
+
+                raw = _safe_json(response)
+                error_obj = raw.get("error") if raw else None
+                error_obj = error_obj if isinstance(error_obj, dict) else None
+                error_message = (
+                    error_obj.get("message")
+                    if (error_obj and isinstance(error_obj.get("message"), str))
+                    else None
+                )
+                retry_after_seconds = _extract_retry_after_seconds(response, error_obj)
+                message = _build_gemini_error_message(
+                    status_code=response.status_code,
+                    model=model,
+                    error_message=error_message,
+                    retry_after_seconds=retry_after_seconds,
+                )
+
+                last_error = GeminiAPIError(
+                    response.status_code,
+                    message,
+                    retry_after_seconds=retry_after_seconds,
+                )
+
+                logger.warning(
+                    "Gemini JSON request failed (attempt %s/%s) status=%s model=%s max_tokens=%s retry_after=%s body=%s",
+                    attempt,
+                    max_attempts,
+                    response.status_code,
+                    model,
+                    token_budget,
+                    retry_after_seconds,
+                    (response.text or "")[:800],
+                )
+
+                if response.status_code not in retryable_statuses:
+                    break
+
+                if response.status_code == 429 and error_message and "limit: 0" in error_message:
+                    break
+
+                if attempt < max_attempts:
+                    delay = retry_after_seconds or min(2**attempt, 10)
+                    await asyncio.sleep(delay)
+
+            if data is None:
+                continue
+
+            text = _extract_gemini_text(data)
+            if not text:
+                last_error = GeminiAPIError(500, "Gemini JSON: bo?sh javob qaytdi.")
+                continue
+
+            try:
+                parsed = extract_json(text)
+            except Exception as exc:
+                finish_reason = _extract_gemini_finish_reason(data)
+                parse_message = str(exc)[:200]
+                logger.warning(
+                    "Gemini JSON parse failed model=%s max_tokens=%s finish_reason=%s error=%s",
+                    model,
+                    token_budget,
+                    finish_reason,
+                    parse_message,
+                )
+                last_error = GeminiAPIError(
+                    500,
+                    f"Gemini JSON parse xatolik: {parse_message}",
+                )
+                is_truncated = (
+                    finish_reason in {"MAX_TOKENS", "LENGTH"}
+                    or "Unterminated string" in parse_message
+                )
+                if is_truncated and token_budget != token_budgets[-1]:
+                    continue
+                raise last_error from exc
+
+            if not isinstance(parsed, dict):
+                last_error = GeminiAPIError(500, "Gemini JSON: object (dict) bo?lishi kerak.")
+                continue
+
+            return parsed
+
+    raise last_error or GeminiAPIError(500, "Gemini API: noma?lum xatolik.")
+
 
 def _extract_gemini_text(response_json: dict[str, Any]) -> str:
     candidates = response_json.get("candidates") or []
@@ -372,6 +588,16 @@ def _extract_gemini_text(response_json: dict[str, Any]) -> str:
         if isinstance(part, dict) and isinstance(part.get("text"), str):
             texts.append(part["text"])
     return "".join(texts).strip()
+
+
+def _extract_gemini_finish_reason(response_json: dict[str, Any]) -> str | None:
+    candidates = response_json.get("candidates") or []
+    if not candidates:
+        return None
+
+    candidate = candidates[0] if isinstance(candidates[0], dict) else {}
+    finish_reason = candidate.get("finishReason")
+    return finish_reason if isinstance(finish_reason, str) else None
 
 
 class GeminiAPIError(RuntimeError):
@@ -630,6 +856,155 @@ async def call_gemini_grounded_answer(user_query: str) -> dict[str, Any]:
         "sources": _extract_gemini_sources(data),
         "model": model,
         "provider": "gemini",
+    }
+
+
+async def call_gemini_from_internet_context(
+    user_query: str,
+    *,
+    internet_context: str,
+    sources: list[dict[str, str]] | None,
+) -> dict[str, Any]:
+    """
+    Uses Gemini to rewrite an already fetched internet context (no Google Search grounding).
+
+    Intended flow: internet search/extraction -> Gemini (polish/structure).
+    """
+    api_key = get_gemini_api_key()
+    model = get_gemini_model()
+    base_url = get_gemini_base_url()
+    api_version = get_gemini_api_version()
+    max_output_tokens = get_gemini_max_output_tokens()
+    lang = _choose_answer_language(user_query)
+
+    if not api_key:
+        raise RuntimeError(
+            "GEMINI_API_KEY topilmadi (env var bo‘lishi kerak). "
+            "Local’da `.env` ga yozing, Railway/production’da esa Service Variables’da "
+            "`GEMINI_API_KEY` ni set qiling."
+        )
+
+    language_rule = "rus tilida" if lang == "ru" else "o'zbek tilida"
+    heading = "Основные характеристики" if lang == "ru" else "Asosiy xarakteristikalar"
+
+    safe_context = (internet_context or "").strip()
+    if len(safe_context) > 6000:
+        safe_context = safe_context[:6000].rstrip() + "…"
+
+    src_lines: list[str] = []
+    for s in sources or []:
+        if not isinstance(s, dict):
+            continue
+        uri = s.get("uri")
+        if not isinstance(uri, str) or not uri.strip():
+            continue
+        title = s.get("title")
+        title = title.strip() if isinstance(title, str) else ""
+        label = title or uri.strip()
+        src_lines.append(f"- {label}: {uri.strip()}")
+        if len(src_lines) >= 12:
+            break
+
+    sources_text = "\n".join(src_lines).strip() or "- (manba yo‘q)"
+
+    prompt = f"""
+Siz internetdan topilgan ma'lumotlarni qayta ishlab, qisqa va aniq javob yozuvchi AI yordamchisiz.
+
+Foydalanuvchi so'rovi: {user_query}
+
+Qoidalar:
+1) Javob faqat {language_rule} bo'lsin.
+2) Faqat `INTERNET_CONTEXT` ichidagi ma'lumotlarga tayangan holda yozing (taxmin qilmang).
+3) 1–3 gapdan iborat qisqa tavsif yozing.
+4) Keyin "{heading}" bo'limida 6–10 ta band yozing (bandlar `-` bilan boshlansin).
+5) Agar aniq ma'lumot yetarli bo'lmasa: "Bu ma'lumot topilmadi" deb yozing.
+
+INTERNET_CONTEXT:
+{safe_context}
+
+SOURCES:
+{sources_text}
+""".strip()
+
+    url = f"{base_url}/{api_version}/models/{model}:generateContent"
+
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {
+            "temperature": 0.2,
+            "maxOutputTokens": max_output_tokens,
+        },
+    }
+
+    headers = {
+        "x-goog-api-key": api_key,
+        "Content-Type": "application/json",
+    }
+
+    retryable_statuses = {429, 500, 502, 503, 504}
+    max_attempts = 3
+
+    last_error: GeminiAPIError | None = None
+    data: dict[str, Any] | None = None
+
+    async with httpx.AsyncClient(timeout=90) as client:
+        for attempt in range(1, max_attempts + 1):
+            response = await client.post(url, headers=headers, json=payload)
+            if response.status_code == 200:
+                data = response.json()
+                break
+
+            raw = _safe_json(response)
+            error_obj = raw.get("error") if raw else None
+            error_obj = error_obj if isinstance(error_obj, dict) else None
+            error_message = (
+                error_obj.get("message")
+                if (error_obj and isinstance(error_obj.get("message"), str))
+                else None
+            )
+            retry_after_seconds = _extract_retry_after_seconds(response, error_obj)
+            message = _build_gemini_error_message(
+                status_code=response.status_code,
+                model=model,
+                error_message=error_message,
+                retry_after_seconds=retry_after_seconds,
+            )
+
+            last_error = GeminiAPIError(
+                response.status_code,
+                message,
+                retry_after_seconds=retry_after_seconds,
+            )
+
+            logger.warning(
+                "Gemini (rewrite) request failed (attempt %s/%s) status=%s model=%s retry_after=%s body=%s",
+                attempt,
+                max_attempts,
+                response.status_code,
+                model,
+                retry_after_seconds,
+                (response.text or "")[:800],
+            )
+
+            if response.status_code not in retryable_statuses:
+                break
+
+            if response.status_code == 429 and error_message and "limit: 0" in error_message:
+                break
+
+            if attempt < max_attempts:
+                delay = retry_after_seconds or min(2**attempt, 10)
+                await asyncio.sleep(delay)
+
+    if data is None:
+        raise last_error or GeminiAPIError(500, "Gemini API: noma’lum xatolik.")
+
+    return {
+        "query": user_query,
+        "answer_text": _extract_gemini_text(data),
+        "sources": (sources or [])[:12],
+        "model": model,
+        "provider": "internet_then_gemini",
     }
 
 
@@ -1336,8 +1711,43 @@ async def candidates(request: CandidatesRequest):
 async def internet_answer(request: InternetRequest):
     query = request.query
 
-    # Try Gemini first (when configured), then fall back to OpenRouter web search grounding,
-    # and finally a free (no-key) DuckDuckGo-based fallback.
+    free_result: dict[str, Any] | None = None
+    try:
+        free_result = await call_free_search_grounded_answer(query)
+    except Exception as exc:
+        logger.info("Free search failed for /api/internet: %s", str(exc)[:300])
+
+    free_sources: list[dict[str, str]] = []
+    if free_result:
+        raw_sources = free_result.get("sources")
+        if isinstance(raw_sources, list):
+            for item in raw_sources:
+                if not isinstance(item, dict):
+                    continue
+                title = item.get("title")
+                uri = item.get("uri")
+                if not isinstance(uri, str) or not uri.strip():
+                    continue
+                title = title.strip() if isinstance(title, str) else ""
+                free_sources.append({"title": title or uri.strip(), "uri": uri.strip()})
+                if len(free_sources) >= 12:
+                    break
+
+    if free_result and free_sources:
+        if get_gemini_api_key():
+            try:
+                return await call_gemini_from_internet_context(
+                    query,
+                    internet_context=str(free_result.get("answer_text") or ""),
+                    sources=free_sources,
+                )
+            except GeminiAPIError as exc:
+                logger.info(
+                    "Gemini rewrite failed for /api/internet, returning free search result: %s",
+                    exc.message,
+                )
+        return free_result
+
     if get_gemini_api_key():
         try:
             return await call_gemini_grounded_answer(query)
@@ -1349,6 +1759,8 @@ async def internet_answer(request: InternetRequest):
             try:
                 return await call_openrouter_grounded_answer(query)
             except Exception:
+                if free_result is not None:
+                    return free_result
                 logger.info("OpenRouter fallback failed for /api/internet, trying free search fallback.")
                 try:
                     return await call_free_search_grounded_answer(query)
@@ -1370,6 +1782,8 @@ async def internet_answer(request: InternetRequest):
         return await call_openrouter_grounded_answer(query)
     except OpenRouterAPIError as exc:
         logger.info("OpenRouter failed for /api/internet, trying free search fallback: %s", exc.message)
+        if free_result is not None:
+            return free_result
         try:
             return await call_free_search_grounded_answer(query)
         except Exception:
@@ -1381,6 +1795,8 @@ async def internet_answer(request: InternetRequest):
         raise
     except Exception as exc:
         logger.info("OpenRouter not available for /api/internet, trying free search fallback: %s", str(exc)[:300])
+        if free_result is not None:
+            return free_result
         try:
             return await call_free_search_grounded_answer(query)
         except Exception as free_exc:
@@ -1613,8 +2029,59 @@ async def generate_technical_task(request: GenerateRequest):
             evidences_by_source=evidences_by_source,
         )
 
-        raw_llm = await call_openrouter(prompt)
-        llm_result = extract_json(raw_llm)
+        llm_result: dict[str, Any] | None = None
+        try:
+            raw_llm = await call_openrouter(prompt)
+            llm_result = extract_json(raw_llm)
+        except Exception as exc:
+            # Free-tier OpenRouter models can be rate-limited and may also produce invalid JSON.
+            # If Gemini is configured, fall back to Gemini JSON mode for reliability.
+            if get_gemini_api_key():
+                logger.info(
+                    "OpenRouter failed for /api/generate, falling back to Gemini: %s",
+                    str(exc)[:300],
+                )
+                try:
+                    # Technical-task JSON can be large; ensure we allow enough output tokens.
+                    max_tokens = max(get_gemini_max_output_tokens(), 4096)
+                    llm_result = await call_gemini_json(prompt, max_output_tokens=max_tokens)
+                except GeminiAPIError as gem_exc:
+                    if gem_exc.status_code in {500, 502, 503, 504} and get_openrouter_api_key():
+                        logger.info(
+                            "Gemini failed for /api/generate, retrying OpenRouter fallback: %s",
+                            gem_exc.message,
+                        )
+                        try:
+                            raw_llm_retry = await call_openrouter(prompt)
+                            llm_result = extract_json(raw_llm_retry)
+                        except Exception as openrouter_retry_exc:
+                            logger.info(
+                                "OpenRouter retry after Gemini failure also failed: %s",
+                                str(openrouter_retry_exc)[:300],
+                            )
+                        else:
+                            gem_exc = None
+
+                    if llm_result is not None:
+                        pass
+                    else:
+                        headers: dict[str, str] = {}
+                        if gem_exc.status_code == 429 and gem_exc.retry_after_seconds:
+                            headers["Retry-After"] = str(int(gem_exc.retry_after_seconds + 0.999))
+                        raise HTTPException(
+                            status_code=gem_exc.status_code,
+                            detail={
+                                "message": gem_exc.message,
+                                "retry_after_seconds": gem_exc.retry_after_seconds,
+                                "provider": "gemini",
+                            },
+                            headers=headers or None,
+                        )
+            else:
+                raise
+
+        if not isinstance(llm_result, dict):
+            raise HTTPException(status_code=500, detail="LLM natijasi JSON object bo‘lishi kerak.")
 
         validation_warnings = validator.validate(
             llm_result=llm_result,
