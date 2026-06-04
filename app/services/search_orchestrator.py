@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timedelta
 import re
 
 from app.connectors.etender_uzex_connector import EtenderUzexConnector
 from app.connectors.xarid_uzex_connector import XaridUzexConnector
 from app.schemas import Evidence, ProductCandidate
+from app.services.env_config import env_int
 
 
 def _is_number(value) -> bool:
@@ -122,19 +124,31 @@ class SearchOrchestrator:
                 now = datetime.now()
                 cutoff = now - timedelta(days=period_months * 31)
                 years_to_scan = list(range(now.year, cutoff.year - 1, -1))
+                year_concurrency = env_int("XARID_YEAR_CONCURRENCY", 3)
+                semaphore = asyncio.Semaphore(max(1, year_concurrency))
 
                 all_evidences: list[Evidence] = []
 
-                for candidate in selected_products_list:
-                    for year in years_to_scan:
-                        all_evidences.extend(
-                            await conn.collect_evidences_for_candidate(
-                                candidate=candidate,
-                                year_id=year,
-                                page_size=page_size,
-                                max_pages=max_pages,
-                            )
+                async def fetch_candidate_year(
+                    candidate: ProductCandidate,
+                    year: int,
+                ) -> list[Evidence]:
+                    async with semaphore:
+                        return await conn.collect_evidences_for_candidate(
+                            candidate=candidate,
+                            year_id=year,
+                            page_size=page_size,
+                            max_pages=max_pages,
                         )
+
+                tasks = [
+                    fetch_candidate_year(candidate, year)
+                    for candidate in selected_products_list
+                    for year in years_to_scan
+                ]
+                if tasks:
+                    for evidences_chunk in await asyncio.gather(*tasks):
+                        all_evidences.extend(evidences_chunk)
 
                 evidences = _filter_by_period(
                     _dedupe_evidences(all_evidences),

@@ -129,6 +129,16 @@ def extract_json(text: str) -> dict[str, Any]:
             value = re.sub(r"```$", "", value).strip()
         return value
 
+    def _normalize_quotes(value: str) -> str:
+        return (
+            value.replace("\ufeff", "")
+            .replace("“", '"')
+            .replace("”", '"')
+            .replace("„", '"')
+            .replace("’", "'")
+            .replace("‘", "'")
+        )
+
     def _extract_balanced_object(value: str) -> str | None:
         start = value.find("{")
         if start == -1:
@@ -161,14 +171,42 @@ def extract_json(text: str) -> dict[str, Any]:
 
         return None
 
-    def _repair_common_json_issues(value: str) -> str:
-        repaired = re.sub(r",(\s*[}\]])", r"\1", value)
-        repaired = re.sub(r'(["}\]])(\s*)(?="[^"]+"\s*:)', r"\1,\2", repaired)
-        repaired = re.sub(r'([0-9])(\s*)(?="[^"]+"\s*:)', r"\1,\2", repaired)
-        repaired = re.sub(r'\b(true|false|null)(\s*)(?="[^"]+"\s*:)', r"\1,\2", repaired)
+    def _quote_unquoted_keys(value: str) -> str:
+        pattern = re.compile(r'([{\s,]\s*)([A-Za-z_\u0400-\u04FF][^:{}\[\],"\n\r]*?)(\s*:)')
+        repaired = value
+        for _ in range(3):
+            updated = pattern.sub(
+                lambda match: f'{match.group(1)}"{match.group(2).strip()}"{match.group(3)}',
+                repaired,
+            )
+            if updated == repaired:
+                break
+            repaired = updated
         return repaired
 
-    raw_text = _strip_code_fences(text)
+    def _repair_common_json_issues(value: str) -> str:
+        repaired = _normalize_quotes(value)
+        key_starts = r'(?:"[^"]+"|[A-Za-z_\u0400-\u04FF][^:{}\[\],"\n\r]*?)\s*:'
+        next_item_starts = rf'(?:{key_starts}|"(?!\s*:)|[{{\[]|-?[0-9]|true\b|false\b|null\b)'
+        repaired = re.sub(r"(?m)^\s*//.*$", "", repaired)
+        repaired = re.sub(r"/\*.*?\*/", "", repaired, flags=re.DOTALL)
+        repaired = re.sub(r"([{,]\s*)'([^'\n\r]+?)'(\s*:)", r'\1"\2"\3', repaired)
+        repaired = _quote_unquoted_keys(repaired)
+        repaired = re.sub(
+            rf'(:\s*)\'([^\'\\]*(?:\\.[^\'\\]*)*)\'(?=\s*(?:[,}}\]]|{next_item_starts}))',
+            lambda match: f'{match.group(1)}"{match.group(2).replace(chr(34), r"\"")}"',
+            repaired,
+        )
+        repaired = re.sub(r"\bNone\b", "null", repaired)
+        repaired = re.sub(r"\bTrue\b", "true", repaired)
+        repaired = re.sub(r"\bFalse\b", "false", repaired)
+        repaired = re.sub(r",(\s*[}\]])", r"\1", repaired)
+        repaired = re.sub(rf'(["}}\]])(\s*)(?={next_item_starts})', r"\1,\2", repaired)
+        repaired = re.sub(rf'([0-9])(\s*)(?={next_item_starts})', r"\1,\2", repaired)
+        repaired = re.sub(rf'\b(true|false|null)(\s*)(?={next_item_starts})', r"\1,\2", repaired)
+        return repaired
+
+    raw_text = _normalize_quotes(_strip_code_fences(text))
     candidates = [raw_text]
 
     balanced = _extract_balanced_object(raw_text)
@@ -179,6 +217,10 @@ def extract_json(text: str) -> dict[str, Any]:
         repaired = _repair_common_json_issues(balanced)
         if repaired not in candidates:
             candidates.append(repaired)
+
+    repaired_raw = _repair_common_json_issues(raw_text)
+    if repaired_raw not in candidates:
+        candidates.append(repaired_raw)
 
     last_error: json.JSONDecodeError | None = None
     for candidate in candidates:
@@ -441,6 +483,79 @@ async def call_openrouter(prompt: str) -> str:
         )
 
     return content
+
+
+async def repair_json_with_openrouter(malformed_json: str) -> dict[str, Any] | None:
+    api_key = get_openrouter_api_key()
+    model = get_openrouter_model()
+    base_url = get_openrouter_base_url()
+    max_tokens = get_openrouter_max_tokens()
+
+    if not api_key or not malformed_json.strip():
+        return None
+
+    payload = {
+        "model": model,
+        "messages": [
+            {
+                "role": "system",
+                "content": (
+                    "You repair malformed JSON. "
+                    "Return one valid JSON object only. "
+                    "Preserve existing keys and values as much as possible. "
+                    "Do not add markdown or explanations."
+                ),
+            },
+            {
+                "role": "user",
+                "content": malformed_json,
+            },
+        ],
+        "temperature": 0,
+        "max_tokens": max_tokens,
+        "response_format": {"type": "json_object"},
+    }
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
+    async with httpx.AsyncClient(timeout=120) as client:
+        response = await client.post(
+            f"{base_url}/chat/completions",
+            headers=headers,
+            json=payload,
+        )
+
+        if response.status_code in {400, 422}:
+            body_text = (response.text or "")[:1000].lower()
+            if "response_format" in body_text or "json_object" in body_text:
+                payload_no_format = dict(payload)
+                payload_no_format.pop("response_format", None)
+                response = await client.post(
+                    f"{base_url}/chat/completions",
+                    headers=headers,
+                    json=payload_no_format,
+                )
+
+    if response.status_code != 200:
+        return None
+
+    data = _safe_json(response)
+    if not data:
+        return None
+
+    choice0 = data["choices"][0] if isinstance(data.get("choices"), list) and data.get("choices") else {}
+    content = (choice0.get("message") or {}).get("content") if isinstance(choice0, dict) else None
+    if not isinstance(content, str) or not content.strip():
+        return None
+
+    try:
+        parsed = extract_json(content)
+    except Exception:
+        return None
+    return parsed if isinstance(parsed, dict) else None
 
 
 async def call_gemini_json(prompt: str, *, max_output_tokens: int | None = None) -> dict[str, Any]:
@@ -2037,6 +2152,10 @@ async def generate_technical_task(request: GenerateRequest):
                 "note": note,
             }
 
+        aggregated_characteristics = "\n\n--- KEYINGI LOT ---\n\n".join(
+            [ev.condition for ev in evidences if ev.condition and str(ev.condition).strip()]
+        )
+
         source_data = {
             "user_query": request.query,
             "keywords": keywords,
@@ -2061,17 +2180,22 @@ async def generate_technical_task(request: GenerateRequest):
         )
 
         llm_result: dict[str, Any] | None = None
+        raw_llm = ""
         try:
             raw_llm = await call_openrouter(prompt)
             llm_result = extract_json(raw_llm)
         except Exception as exc:
-            raise HTTPException(
-                status_code=502,
-                detail={
-                    "message": str(exc)[:500] or "OpenRouter xatoligi",
-                    "provider": "openrouter",
-                },
-            )
+            recovered = await repair_json_with_openrouter(raw_llm)
+            if recovered is not None:
+                llm_result = recovered
+            else:
+                raise HTTPException(
+                    status_code=502,
+                    detail={
+                        "message": str(exc)[:500] or "OpenRouter xatoligi",
+                        "provider": "openrouter",
+                    },
+                )
 
         if not isinstance(llm_result, dict):
             raise HTTPException(status_code=500, detail="LLM natijasi JSON object bo‘lishi kerak.")
@@ -2097,6 +2221,7 @@ async def generate_technical_task(request: GenerateRequest):
             "evidences": evidences_json,
             "evidences_by_source": evidences_by_source_json,
             "source_summaries": source_summaries,
+            "aggregated_characteristics": aggregated_characteristics,
             "technical_task": llm_result,
             "validation_warnings": validation_warnings,
         }

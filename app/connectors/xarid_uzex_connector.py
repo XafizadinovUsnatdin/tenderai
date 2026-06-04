@@ -1,10 +1,12 @@
 import asyncio
 import json
+import time
 from typing import Any
 
 import httpx
 
 from app.schemas import ProductCandidate, Evidence
+from app.services.env_config import env_int
 
 
 class XaridUzexConnector:
@@ -32,6 +34,10 @@ class XaridUzexConnector:
 
     SUCCESS_DEAL_STATUSES = {"Оплачена", "Поставлена"}
     SUCCESS_PAYMENT_STATUSES = {"Оплачен"}
+
+    _categories_cache: list[dict[str, Any]] | None = None
+    _categories_cache_expires_at: float = 0.0
+    _categories_cache_lock: asyncio.Lock | None = None
 
     def __init__(self, view: str = VIEW_SHOP):
         if view not in {self.VIEW_SHOP, self.VIEW_NATIONAL, self.VIEW_AUCTION}:
@@ -73,14 +79,49 @@ class XaridUzexConnector:
 
         return data if isinstance(data, list) else []
 
+    @classmethod
+    def _get_categories_cache_lock(cls) -> asyncio.Lock:
+        if cls._categories_cache_lock is None:
+            cls._categories_cache_lock = asyncio.Lock()
+        return cls._categories_cache_lock
+
+    @staticmethod
+    def _get_categories_cache_ttl_seconds() -> int:
+        return env_int("XARID_CATEGORY_CACHE_TTL_SECONDS", 1800)
+
+    @staticmethod
+    def _get_page_concurrency() -> int:
+        return env_int("XARID_PAGE_CONCURRENCY", 2)
+
     async def get_categories(self, client: httpx.AsyncClient) -> list[dict[str, Any]]:
-        response = await client.get(
-            f"{self.TRADE_API}/Lib/GetCategories",
-            headers=self.headers,
-            timeout=30,
-        )
-        response.raise_for_status()
-        return self._safe_json_list(response, context="GetCategories")
+        now = time.monotonic()
+        cached = self.__class__._categories_cache
+        if cached and self.__class__._categories_cache_expires_at > now:
+            return list(cached)
+
+        lock = self.__class__._get_categories_cache_lock()
+        async with lock:
+            now = time.monotonic()
+            cached = self.__class__._categories_cache
+            if cached and self.__class__._categories_cache_expires_at > now:
+                return list(cached)
+
+            response = await client.get(
+                f"{self.TRADE_API}/Lib/GetCategories",
+                headers=self.headers,
+                timeout=30,
+            )
+            response.raise_for_status()
+            categories = self._safe_json_list(response, context="GetCategories")
+
+            if categories:
+                self.__class__._categories_cache = categories
+                self.__class__._categories_cache_expires_at = (
+                    time.monotonic() + self._get_categories_cache_ttl_seconds()
+                )
+                return list(categories)
+
+            return list(cached or [])
 
     async def get_products(
         self,
@@ -230,12 +271,14 @@ class XaridUzexConnector:
         max_pages: int = 3,
     ) -> list[Evidence]:
         all_deals: list[dict[str, Any]] = []
+        page_concurrency = max(1, min(max_pages, self._get_page_concurrency()))
+        semaphore = asyncio.Semaphore(page_concurrency)
 
-        async with httpx.AsyncClient(follow_redirects=True) as client:
-            for page in range(max_pages):
-                from_row = page * page_size + 1
-                to_row = (page + 1) * page_size
+        async def fetch_page(page: int, client: httpx.AsyncClient) -> tuple[int, list[dict[str, Any]]]:
+            from_row = page * page_size + 1
+            to_row = (page + 1) * page_size
 
+            async with semaphore:
                 deals = await self.get_completed_deals(
                     client=client,
                     candidate=candidate,
@@ -243,12 +286,19 @@ class XaridUzexConnector:
                     from_row=from_row,
                     to_row=to_row,
                 )
+                if deals:
+                    await asyncio.sleep(0.05)
+                return page, deals
 
-                if not deals:
-                    break
+        async with httpx.AsyncClient(follow_redirects=True) as client:
+            page_results = await asyncio.gather(
+                *(fetch_page(page, client) for page in range(max_pages))
+            )
 
-                all_deals.extend(deals)
-                await asyncio.sleep(0.2)
+        for _, deals in sorted(page_results, key=lambda item: item[0]):
+            if not deals:
+                break
+            all_deals.extend(deals)
 
         successful_deals = [
             deal for deal in all_deals

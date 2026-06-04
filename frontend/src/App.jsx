@@ -3,8 +3,8 @@ import {
   Search,
   FileText,
   AlertTriangle,
-  CheckCircle2,
   Loader2,
+  Database,
   Globe,
   PackageSearch,
   BarChart3,
@@ -607,17 +607,95 @@ function ListBlock({ items }) {
   return <p>{items}</p>;
 }
 
+function VariantBlock({ title, variant }) {
+  if (!variant) {
+    return (
+      <Card className="full">
+        <h3>{title}</h3>
+        <p className="muted">MaвЂ™lumot yoвЂq</p>
+      </Card>
+    );
+  }
+
+  const description = String(variant?.description || "").trim();
+  const technicalParameters = Array.isArray(variant?.technical_parameters)
+    ? variant.technical_parameters.map((item) => String(item || "").trim()).filter(Boolean)
+    : [];
+  const extraEntries = Object.entries(variant).filter(
+    ([key, value]) => key !== "description" && key !== "technical_parameters" && value
+  );
+
+  return (
+    <Card className="full">
+      <h3>{title}</h3>
+      {description ? <p>{description}</p> : null}
+      {technicalParameters.length > 0 ? (
+        <>
+          <h4 style={{ marginTop: 16, marginBottom: 10 }}>Texnik parametrlar</h4>
+          <ul className="nice-list">
+            {technicalParameters.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </>
+      ) : (
+        <p className="muted">MaвЂ™lumot yoвЂq</p>
+      )}
+      {extraEntries.length > 0 ? (
+        <div className="object-list" style={{ marginTop: 16 }}>
+          {extraEntries.map(([key, value]) => (
+            <div className="object-row" key={key}>
+              <b>{key}</b>
+              <span>
+                {Array.isArray(value)
+                  ? value.join("; ")
+                  : typeof value === "object"
+                    ? JSON.stringify(value)
+                    : String(value || "вЂ”")}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </Card>
+  );
+}
+
+function SourceStatusCard({ sourceStatus }) {
+  if (!sourceStatus || Object.keys(sourceStatus).length === 0) return null;
+
+  return (
+    <Card className="full compact-card">
+      <SectionTitle icon={<Database size={18} />} title="Manbalar holati" />
+      <div className="source-status-grid">
+        {Object.entries(sourceStatus).map(([source, info]) => {
+          const status = info?.status || "unknown";
+          const count = info?.count ?? 0;
+
+          return (
+            <div key={source} className="source-status-item">
+              <div className="source-status-top">
+                <span className="source-status-name">{source}</span>
+                <span className={`status-badge ${status}`}>{status}</span>
+              </div>
+              <div className="source-status-bottom">
+                <span className="muted tiny">Evidence: {count}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
 function TechnicalTask({ task }) {
   if (!task) return null;
 
   return (
     <div className="result-grid">
       <Card className="full">
-        <SectionTitle
-          icon={<FileText size={22} />}
-          title={task.title || "Texnik topshiriq"}
-          subtitle="AI tomonidan yig‘ilgan dalillar asosida tayyorlangan draft"
-        />
+        <SectionTitle icon={<FileText size={22} />} title="Texnik topshiriq" />
       </Card>
 
       <Card>
@@ -635,20 +713,9 @@ function TechnicalTask({ task }) {
         <ListBlock items={task.recommended_specification} />
       </Card>
 
-      <Card>
-        <h3>Ekonom variant</h3>
-        <ListBlock items={task.econom_variant} />
-      </Card>
-
-      <Card>
-        <h3>Standart variant</h3>
-        <ListBlock items={task.standard_variant} />
-      </Card>
-
-      <Card>
-        <h3>Premium variant</h3>
-        <ListBlock items={task.premium_variant} />
-      </Card>
+      <VariantBlock title="Ekonom variant" variant={task.econom_variant} />
+      <VariantBlock title="Standart variant" variant={task.standard_variant} />
+      <VariantBlock title="Premium variant" variant={task.premium_variant} />
 
       <Card>
         <h3>Risk ogohlantirishlari</h3>
@@ -875,6 +942,49 @@ function GroundedInternetAnswer({ internet, loading, error, onClose }) {
   );
 }
 
+const SOURCE_PROGRESS_LABELS = {
+  "xarid.uzex.uz": "xarid.uzex.uz completed deals",
+  "xarid.uzex.uz/national": "xarid.uzex.uz national",
+  "xarid.uzex.uz/auction": "xarid.uzex.uz auction",
+  "etender.uzex.uz": "etender.uzex.uz",
+};
+
+function buildCandidateProgressSteps() {
+  return [
+    "So'rov tekshirilmoqda...",
+    "Mahsulot turi aniqlanmoqda...",
+    "Qidiruv rejasi tuzilmoqda...",
+    "Qidiruv kalit so'zlari tayyorlanmoqda...",
+    "Xarid katalog kategoriyalari tekshirilmoqda...",
+    "Katalog bo'yicha mos kandidatlar qidirilmoqda...",
+    "Topilgan kandidatlar score qilinmoqda...",
+    "Candidate ro'yxati tayyorlanmoqda...",
+  ];
+}
+
+function buildGenerateProgressSteps(enabledSources, selectedCount) {
+  const selectedPrefix =
+    selectedCount > 1
+      ? `${selectedCount} ta kandidat uchun manbalar tayyorlanmoqda...`
+      : "Tanlangan kandidat uchun manbalar tayyorlanmoqda...";
+
+  const sourceSteps = (Array.isArray(enabledSources) ? enabledSources : [])
+    .map((source) => SOURCE_PROGRESS_LABELS[source] || source)
+    .filter(Boolean)
+    .map((label) => `${label} dan lotlar va parametrlar olinmoqda...`);
+
+  return [
+    selectedPrefix,
+    "Topilgan lotlar birlashtirilmoqda...",
+    ...sourceSteps,
+    "Tender parametrlaridan texnik belgilar ajratilmoqda...",
+    "Narxlar tahlil qilinmoqda...",
+    "LLM uchun kontekst tayyorlanmoqda...",
+    "Texnik topshiriq generatsiya qilinmoqda...",
+    "Natija formatlanmoqda...",
+  ];
+}
+
 export default function App() {
   const [query, setQuery] = useState("TP-Link TL-SG108S");
   const [periodMonths, setPeriodMonths] = useState(12);
@@ -886,6 +996,9 @@ export default function App() {
   ]);
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState("");
+  const [progressSteps, setProgressSteps] = useState([]);
+  const [progressIndex, setProgressIndex] = useState(0);
+  const [progressElapsedSeconds, setProgressElapsedSeconds] = useState(0);
   const [error, setError] = useState("");
   const [candidateResult, setCandidateResult] = useState(null);
   const [result, setResult] = useState(null);
@@ -898,11 +1011,65 @@ export default function App() {
   const [internetResult, setInternetResult] = useState(null);
   const internetPanelRef = useRef(null);
   const internetAbortRef = useRef(null);
+  const progressStepTimerRef = useRef(null);
+  const progressElapsedTimerRef = useRef(null);
 
   function toggleSource(source) {
     setEnabledSources((prev) =>
       prev.includes(source) ? prev.filter((s) => s !== source) : [...prev, source]
     );
+  }
+
+  function stopProgress() {
+    if (progressStepTimerRef.current) {
+      clearInterval(progressStepTimerRef.current);
+      progressStepTimerRef.current = null;
+    }
+    if (progressElapsedTimerRef.current) {
+      clearInterval(progressElapsedTimerRef.current);
+      progressElapsedTimerRef.current = null;
+    }
+    setStep("");
+    setProgressSteps([]);
+    setProgressIndex(0);
+    setProgressElapsedSeconds(0);
+  }
+
+  function startProgress(steps, delayMs = 1800) {
+    stopProgress();
+
+    const normalized = Array.from(
+      new Set(
+        (Array.isArray(steps) ? steps : [])
+          .map((item) => String(item || "").trim())
+          .filter(Boolean)
+      )
+    );
+
+    if (!normalized.length) return;
+
+    setProgressSteps(normalized);
+    setProgressIndex(0);
+    setProgressElapsedSeconds(0);
+    setStep(normalized[0]);
+
+    progressElapsedTimerRef.current = setInterval(() => {
+      setProgressElapsedSeconds((prev) => prev + 1);
+    }, 1000);
+
+    if (normalized.length === 1) return;
+
+    let currentIndex = 0;
+    progressStepTimerRef.current = setInterval(() => {
+      currentIndex = Math.min(currentIndex + 1, normalized.length - 1);
+      setProgressIndex(currentIndex);
+      setStep(normalized[currentIndex]);
+
+      if (currentIndex >= normalized.length - 1 && progressStepTimerRef.current) {
+        clearInterval(progressStepTimerRef.current);
+        progressStepTimerRef.current = null;
+      }
+    }, delayMs);
   }
 
   useEffect(() => {
@@ -912,6 +1079,8 @@ export default function App() {
       node.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }, [showInternetAnswer, internetLoading]);
+
+  useEffect(() => () => stopProgress(), []);
 
   async function performSearch({ openInternetAfter = false } = {}) {
     if (!query.trim()) {
@@ -931,18 +1100,7 @@ export default function App() {
     setShowInternetAnswer(false);
     setActiveTab("result");
     setActiveEvidenceSource("all");
-    const fakeSteps = [
-      "Mahsulot turi aniqlanmoqda...",
-      "Xarid.uzex katalogidan candidatlar olinmoqda...",
-    ];
-
-    let index = 0;
-    setStep(fakeSteps[index]);
-
-    const timer = setInterval(() => {
-      index = Math.min(index + 1, fakeSteps.length - 1);
-      setStep(fakeSteps[index]);
-    }, 2500);
+    startProgress(buildCandidateProgressSteps(), 1600);
 
     try {
       const response = await fetch(CANDIDATES_API_URL, {
@@ -973,15 +1131,13 @@ export default function App() {
       const list = Array.isArray(data?.candidates) ? data.candidates : [];
       const normalized = { ...data, candidates: list };
       setCandidateResult(normalized);
-      setStep("");
       return normalized;
     } catch (err) {
       setError(err.message);
-      setStep("");
       return null;
     } finally {
-      clearInterval(timer);
       setLoading(false);
+      stopProgress();
     }
   }
 
@@ -1009,19 +1165,7 @@ export default function App() {
     setShowInternetAnswer(false);
     setActiveTab("result");
     setActiveEvidenceSource("all");
-    const fakeSteps = [
-      "Tender manbalaridan dalillar yig‘ilmoqda...",
-      "Narxlar tahlil qilinmoqda...",
-      "Texnik topshiriq generatsiya qilinmoqda...",
-    ];
-
-    let index = 0;
-    setStep(fakeSteps[index]);
-
-    const timer = setInterval(() => {
-      index = Math.min(index + 1, fakeSteps.length - 1);
-      setStep(fakeSteps[index]);
-    }, 2500);
+    startProgress(buildGenerateProgressSteps(enabledSources, selectedCandidates.length), 1800);
 
     try {
       const response = await fetch(API_URL, {
@@ -1057,13 +1201,11 @@ export default function App() {
       setResult(data);
       setActiveTab("result");
       if (openInternetAfter && data?.technical_task) setShowInternetAnswer(true);
-      setStep("Tayyor");
     } catch (err) {
       setError(err.message);
-      setStep("");
     } finally {
-      clearInterval(timer);
       setLoading(false);
+      stopProgress();
     }
   }
 
@@ -1542,9 +1684,45 @@ export default function App() {
         </form>
 
         {loading && (
-          <div className="loading-box">
+          <div className="loading-box" style={{ alignItems: "flex-start" }}>
             <Loader2 className="spin" size={22} />
-            <span>{step}</span>
+            <div style={{ display: "grid", gap: 8, width: "100%" }}>
+              <span>{step || "Ishlanmoqda..."}</span>
+              {progressSteps.length > 0 && (
+                <>
+                  <span className="muted tiny">
+                    {Math.min(progressIndex + 1, progressSteps.length)} / {progressSteps.length} bosqich ·{" "}
+                    {progressElapsedSeconds}s
+                  </span>
+                  <div style={{ display: "grid", gap: 6 }}>
+                    {progressSteps.map((item, idx) => {
+                      const status = idx < progressIndex ? "done" : idx === progressIndex ? "active" : "pending";
+                      const marker = status === "done" ? "✓" : status === "active" ? "•" : "○";
+
+                      return (
+                        <div
+                          key={`${item}_${idx}`}
+                          style={{
+                            display: "flex",
+                            gap: 8,
+                            alignItems: "flex-start",
+                            opacity: status === "pending" ? 0.72 : 1,
+                          }}
+                        >
+                          <span className="muted tiny">{marker}</span>
+                          <span
+                            className={status === "pending" ? "muted tiny" : "tiny"}
+                            style={{ lineHeight: 1.45, fontWeight: status === "active" ? 600 : 400 }}
+                          >
+                            {item}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         )}
 
@@ -1710,61 +1888,9 @@ export default function App() {
             </div>
           </div>
 
-          {result?.source_status && (
-            <Card className="full compact-card">
-              <SectionTitle
-                icon={<Database size={18} />}
-                title="Manbalar holati"
-              />
-              <div className="source-status-grid">
-                {Object.entries(result.source_status).map(([source, info]) => {
-                  const status = info?.status || "unknown";
-                  const count = info?.count ?? 0;
-                  const message = String(info?.message || "").trim();
-                  const messageShort =
-                    message.length > 60 ? `${message.slice(0, 60).trim()}…` : message;
-
-                  return (
-                    <div key={source} className="source-status-item" title={message || undefined}>
-                      <div className="source-status-top">
-                        <span className="source-status-name">{source}</span>
-                        <span className={`status-badge ${status}`}>{status}</span>
-                      </div>
-                      <div className="source-status-bottom">
-                        <span className="muted tiny">Evidence: {count}</span>
-                        {message ? <span className="muted tiny">{messageShort}</span> : <span className="muted tiny">—</span>}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </Card>
-          )}
-
           {activeTab === "result" && (
             <>
               <div className="summary-grid">
-                <Card>
-                  <SectionTitle
-                    icon={<CheckCircle2 size={22} />}
-                    title={selectedProducts.length > 1 ? "Tanlangan mahsulotlar" : "Tanlangan mahsulot"}
-                    subtitle="Xarid katalogidan tanlangan product_code lar"
-                  />
-                  {selectedProducts.length > 0 ? (
-                    <div style={{ display: "grid", gap: 12 }}>
-                      {selectedProducts.map((item) => (
-                        <div className="product-box" key={item?.product_code || item?.name}>
-                          <h3>{item?.name}</h3>
-                          <p>{item?.category_name}</p>
-                          <code>{item?.product_code}</code>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="muted">Mahsulot tanlanmagan</p>
-                  )}
-                </Card>
-
                 <Card>
                   <SectionTitle
                     icon={<PackageSearch size={22} />}
@@ -2038,19 +2164,22 @@ export default function App() {
           )}
 
           {activeTab === "evidences" && (
-            <Card className="full">
-              <SectionTitle
-                icon={<Database size={22} />}
-                title="Evidence / Manbalar"
-                subtitle="Texnik topshiriq va audit qaysi lotlarga asoslanganini ko‘rsatadi"
-              />
-              <Tabs
-                value={activeEvidenceSource}
-                onChange={setActiveEvidenceSource}
-                items={evidenceTabItems}
-              />
-              <EvidenceTable evidences={sortedEvidencesForActiveSource} />
-            </Card>
+            <div className="result-grid">
+              <SourceStatusCard sourceStatus={sourceStatus} />
+              <Card className="full">
+                <SectionTitle
+                  icon={<Database size={22} />}
+                  title="Evidence / Manbalar"
+                  subtitle="Texnik topshiriq va audit qaysi lotlarga asoslanganini ko‘rsatadi"
+                />
+                <Tabs
+                  value={activeEvidenceSource}
+                  onChange={setActiveEvidenceSource}
+                  items={evidenceTabItems}
+                />
+                <EvidenceTable evidences={sortedEvidencesForActiveSource} />
+              </Card>
+            </div>
           )}
         </>
       )}
