@@ -213,6 +213,13 @@ Query: {query}
 
         return "".join(out)
 
+    def _safe_response_json(self, response: httpx.Response) -> dict[str, Any] | None:
+        try:
+            data = response.json()
+        except Exception:
+            return None
+        return data if isinstance(data, dict) else None
+
     async def _call_openrouter(self, prompt: str, query: str, *, max_tokens: int | None = None) -> str:
         api_key = get_openrouter_api_key()
         model = get_openrouter_model()
@@ -265,7 +272,9 @@ Query: {query}
         if response.status_code != 200:
             return ""
 
-        data = response.json()
+        data = self._safe_response_json(response)
+        if not data:
+            return ""
         choice0 = data["choices"][0] if isinstance(data.get("choices"), list) and data.get("choices") else {}
         message = choice0.get("message") if isinstance(choice0, dict) else {}
         content = message.get("content") if isinstance(message, dict) else None

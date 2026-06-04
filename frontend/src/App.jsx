@@ -1,11 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Search,
   FileText,
   AlertTriangle,
   CheckCircle2,
   Loader2,
-  Database,
   Globe,
   PackageSearch,
   BarChart3,
@@ -27,7 +26,7 @@ const INTERNET_API_URL =
   import.meta.env.VITE_INTERNET_API_URL ||
   (import.meta.env.PROD ? "/api/internet" : "http://127.0.0.1:8000/api/internet");
 
-function downloadJson(data, filename = "tenderai_result.json") {
+function downloadJson(data, filename = "result.json") {
   const blob = new Blob([JSON.stringify(data, null, 2)], {
     type: "application/json",
   });
@@ -41,7 +40,7 @@ function downloadJson(data, filename = "tenderai_result.json") {
   URL.revokeObjectURL(url);
 }
 
-function downloadCsv(rows, filename = "tenderai_evidences.csv") {
+function downloadCsv(rows, filename = "evidences.csv") {
   const data = Array.isArray(rows) ? rows : [];
 
   const headers = [
@@ -803,9 +802,7 @@ function GroundedInternetAnswer({ internet, loading, error, onClose }) {
         ? isCyrillicQuery
           ? "Интернет?поиск (бесплатно)"
           : "Internet qidiruvi (bepul)"
-        : isCyrillicQuery
-          ? "Gemini + Google поиск"
-          : "Gemini + Google qidiruvi";
+        : "Internet qidiruvi";
   const parsed = parseGroundedInternetAnswerText(answerText);
 
   return (
@@ -891,7 +888,6 @@ export default function App() {
   const [step, setStep] = useState("");
   const [error, setError] = useState("");
   const [candidateResult, setCandidateResult] = useState(null);
-  const [selectedCandidateCodes, setSelectedCandidateCodes] = useState([]);
   const [result, setResult] = useState(null);
   const [activeTab, setActiveTab] = useState("result");
   const [activeEvidenceSource, setActiveEvidenceSource] = useState("all");
@@ -900,6 +896,8 @@ export default function App() {
   const [internetLoading, setInternetLoading] = useState(false);
   const [internetError, setInternetError] = useState("");
   const [internetResult, setInternetResult] = useState(null);
+  const internetPanelRef = useRef(null);
+  const internetAbortRef = useRef(null);
 
   function toggleSource(source) {
     setEnabledSources((prev) =>
@@ -907,15 +905,13 @@ export default function App() {
     );
   }
 
-  function toggleCandidateSelection(code) {
-    const normalized = String(code || "").trim();
-    if (!normalized) return;
-    setSelectedCandidateCodes((prev) =>
-      prev.includes(normalized)
-        ? prev.filter((item) => item !== normalized)
-        : [...prev, normalized]
-    );
-  }
+  useEffect(() => {
+    if (!showInternetAnswer) return;
+    const node = internetPanelRef.current;
+    if (node && typeof node.scrollIntoView === "function") {
+      node.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [showInternetAnswer, internetLoading]);
 
   async function performSearch({ openInternetAfter = false } = {}) {
     if (!query.trim()) {
@@ -931,7 +927,6 @@ export default function App() {
     setLoading(true);
     setError("");
     setCandidateResult(null);
-    setSelectedCandidateCodes([]);
     setResult(null);
     setShowInternetAnswer(false);
     setActiveTab("result");
@@ -976,19 +971,21 @@ export default function App() {
       }
 
       const list = Array.isArray(data?.candidates) ? data.candidates : [];
-      setCandidateResult(data);
-      setSelectedCandidateCodes(list?.[0]?.product_code ? [String(list[0].product_code)] : []);
+      const normalized = { ...data, candidates: list };
+      setCandidateResult(normalized);
       setStep("");
+      return normalized;
     } catch (err) {
       setError(err.message);
       setStep("");
+      return null;
     } finally {
       clearInterval(timer);
       setLoading(false);
     }
   }
 
-  async function performGenerate({ openInternetAfter = false } = {}) {
+  async function performGenerate({ openInternetAfter = false, candidateSnapshot = null } = {}) {
     if (!query.trim()) {
       setError("Mahsulot nomini kiriting.");
       return;
@@ -999,10 +996,11 @@ export default function App() {
       return;
     }
 
-    const candidates = Array.isArray(candidateResult?.candidates) ? candidateResult.candidates : [];
-    const selectedCandidates = candidates.filter((c) =>
-      selectedCandidateCodes.includes(String(c?.product_code || "").trim())
-    );
+    const currentCandidateResult = candidateSnapshot || candidateResult;
+    const candidates = Array.isArray(currentCandidateResult?.candidates)
+      ? currentCandidateResult.candidates
+      : [];
+    const selectedCandidates = candidates.filter(Boolean);
     const selectedCandidate = selectedCandidates[0] || null;
 
     setLoading(true);
@@ -1038,8 +1036,8 @@ export default function App() {
           selected_candidate: selectedCandidate,
           selected_candidates: selectedCandidates,
           candidates,
-          keywords: candidateResult?.keywords,
-          search_plan: candidateResult?.search_plan,
+          keywords: currentCandidateResult?.keywords,
+          search_plan: currentCandidateResult?.search_plan,
         }),
       });
 
@@ -1071,7 +1069,10 @@ export default function App() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    await performSearch();
+    const candidateData = await performSearch();
+    if (candidateData) {
+      await performGenerate({ candidateSnapshot: candidateData });
+    }
   }
 
   async function performInternetSearch() {
@@ -1084,6 +1085,13 @@ export default function App() {
       return;
     }
 
+    if (internetAbortRef.current) {
+      internetAbortRef.current.abort();
+    }
+
+    const controller = new AbortController();
+    internetAbortRef.current = controller;
+
     setInternetLoading(true);
     setInternetError("");
     setInternetResult({ query: q, answer_text: "", sources: [] });
@@ -1094,6 +1102,7 @@ export default function App() {
         headers: {
           "Content-Type": "application/json",
         },
+        signal: controller.signal,
         body: JSON.stringify({ query: q }),
       });
 
@@ -1113,9 +1122,15 @@ export default function App() {
 
       setInternetResult(data);
     } catch (err) {
+      if (err?.name === "AbortError") {
+        return;
+      }
       setInternetError(err.message);
     } finally {
-      setInternetLoading(false);
+      if (internetAbortRef.current === controller) {
+        internetAbortRef.current = null;
+        setInternetLoading(false);
+      }
     }
   }
 
@@ -1424,17 +1439,7 @@ export default function App() {
       )}
 
       <div className="hero">
-        <div className="hero-badge">
-          <Database size={16} />
-          TenderAI
-        </div>
-
         <h1>AI yordamida xarid texnik topshirig‘i</h1>
-        <p>
-          Mahsulot yoki xizmat nomini kiriting. Tizim xarid.uzex.uz (completed deals)
-          va etender.uzex.uz (deals list) manbalaridan dalillarni yig‘adi va texnik
-          topshiriq draftini yaratadi.
-        </p>
       </div>
 
       <Card className="search-card">
@@ -1508,7 +1513,7 @@ export default function App() {
                   type="button"
                   className="secondary-btn small"
                   onClick={performInternetSearch}
-                  disabled={loading || internetLoading || !query.trim()}
+                  disabled={!query.trim()}
                   title={
                     !query.trim()
                       ? "Mahsulot nomini kiriting."
@@ -1551,7 +1556,18 @@ export default function App() {
         )}
       </Card>
 
-      {!loading && candidateResult && !result && (
+      {showInternetAnswer && (
+        <div ref={internetPanelRef}>
+          <GroundedInternetAnswer
+            internet={internetResult}
+            loading={internetLoading}
+            error={internetError}
+            onClose={() => setShowInternetAnswer(false)}
+          />
+        </div>
+      )}
+
+      {false && !loading && candidateResult && !result && (
         <Card className="full">
           <SectionTitle
             icon={<PackageSearch size={22} />}
@@ -1603,7 +1619,8 @@ export default function App() {
                   <thead>
                     <tr>
                       <th>Tanlash</th>
-                      <th>Kandidat</th>
+                      <th>Katalog nomi</th>
+                      <th>Kategoriya</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1621,12 +1638,13 @@ export default function App() {
                           </td>
                           <td>
                             <div style={{ display: "grid", gap: 4 }}>
-                              <strong>{formatCandidateLabel(c)}</strong>
+                              <strong>{String(c?.name || "").trim() || "—"}</strong>
                               <div className="muted tiny">
                                 <code>{code || "—"}</code>
                               </div>
                             </div>
                           </td>
+                          <td>{String(c?.category_name || "").trim() || "—"}</td>
                         </tr>
                       );
                     })}
@@ -1661,15 +1679,6 @@ export default function App() {
             </>
           )}
         </Card>
-      )}
-
-      {showInternetAnswer && (
-        <GroundedInternetAnswer
-          internet={internetResult}
-          loading={internetLoading}
-          error={internetError}
-          onClose={() => setShowInternetAnswer(false)}
-        />
       )}
 
       {result && (
@@ -1798,7 +1807,7 @@ export default function App() {
                   )}
                 </Card>
 
-                {Array.isArray(candidates) && candidates.length > 0 && (
+                {alternativeCandidates.length > 0 && (
                   <Card className="full compact-card">
                     <SectionTitle
                       icon={<PackageSearch size={22} />}
@@ -1824,7 +1833,8 @@ export default function App() {
                         <table>
                           <thead>
                             <tr>
-                              <th>Kandidat</th>
+                              <th>Katalog nomi</th>
+                              <th>Kategoriya</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1832,12 +1842,13 @@ export default function App() {
                               <tr key={c.product_code}>
                                 <td>
                                   <div style={{ display: "grid", gap: 4 }}>
-                                    <strong>{formatCandidateLabel(c)}</strong>
+                                    <strong>{String(c?.name || "").trim() || "—"}</strong>
                                     <div className="muted tiny">
                                       <code>{c.product_code}</code>
                                     </div>
                                   </div>
                                 </td>
+                                <td>{String(c?.category_name || "").trim() || "—"}</td>
                               </tr>
                             ))}
                           </tbody>

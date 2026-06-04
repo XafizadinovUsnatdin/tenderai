@@ -26,6 +26,15 @@ class EtenderUzexConnector:
         ),
     }
 
+    def _safe_json_list(self, response: httpx.Response, *, context: str) -> list[dict[str, Any]]:
+        try:
+            data = response.json()
+        except Exception:
+            print(f"{context} invalid JSON:", response.status_code, response.text[:300])
+            return []
+
+        return data if isinstance(data, list) else []
+
     async def search(
         self,
         query: str,
@@ -97,7 +106,7 @@ class EtenderUzexConnector:
             )
             return []
 
-        return response.json()
+        return self._safe_json_list(response, context="Etender DealsList")
 
     def _build_source_url(self, deal: dict[str, Any]) -> str:
         """

@@ -64,6 +64,15 @@ class XaridUzexConnector:
         self.headers = dict(self.HEADERS)
         self.headers["Referer"] = f"https://xarid.uzex.uz{self._referer_path}"
 
+    def _safe_json_list(self, response: httpx.Response, *, context: str) -> list[dict[str, Any]]:
+        try:
+            data = response.json()
+        except Exception:
+            print(f"{context} invalid JSON:", response.status_code, response.text[:300])
+            return []
+
+        return data if isinstance(data, list) else []
+
     async def get_categories(self, client: httpx.AsyncClient) -> list[dict[str, Any]]:
         response = await client.get(
             f"{self.TRADE_API}/Lib/GetCategories",
@@ -71,7 +80,7 @@ class XaridUzexConnector:
             timeout=30,
         )
         response.raise_for_status()
-        return response.json()
+        return self._safe_json_list(response, context="GetCategories")
 
     async def get_products(
         self,
@@ -91,7 +100,7 @@ class XaridUzexConnector:
         if response.status_code != 200:
             return []
 
-        return response.json()
+        return self._safe_json_list(response, context="GetProducts")
 
     async def find_product_candidates(
         self,
@@ -211,7 +220,7 @@ class XaridUzexConnector:
             print("GetCompletedDeals failed:", response.status_code, response.text[:300])
             return []
 
-        return response.json()
+        return self._safe_json_list(response, context="GetCompletedDeals")
 
     async def collect_evidences_for_candidate(
         self,

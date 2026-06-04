@@ -18,7 +18,6 @@ from pydantic import BaseModel, Field
 from app.connectors.xarid_uzex_connector import XaridUzexConnector
 from app.schemas import ProductCandidate
 from app.services.query_understanding_service import QueryUnderstandingService
-from app.services.candidate_selector_service import CandidateSelectorService
 from app.services.price_analysis_service import PriceAnalysisService
 from app.services.llm_prompt_builder import LLMPromptBuilder
 from app.services.generic_output_validator import GenericOutputValidator
@@ -425,7 +424,9 @@ async def call_openrouter(prompt: str) -> str:
             f"OpenRouter error {response.status_code}: {response.text[:1000]}"
         )
 
-    data = response.json()
+    data = _safe_json(response)
+    if not data:
+        raise RuntimeError("OpenRouter bo‘sh yoki noto‘g‘ri JSON qaytardi.")
     choice0 = data["choices"][0] if isinstance(data.get("choices"), list) and data.get("choices") else {}
     finish_reason = choice0.get("finish_reason") if isinstance(choice0, dict) else None
     content = (choice0.get("message") or {}).get("content") if isinstance(choice0, dict) else None
@@ -489,8 +490,11 @@ async def call_gemini_json(prompt: str, *, max_output_tokens: int | None = None)
             for attempt in range(1, max_attempts + 1):
                 response = await client.post(url, headers=headers, json=payload)
                 if response.status_code == 200:
-                    data = response.json()
-                    break
+                    data = _safe_json(response)
+                    if data is not None:
+                        break
+                    last_error = GeminiAPIError(502, "Gemini bo‘sh yoki noto‘g‘ri JSON qaytardi.")
+                    continue
 
                 raw = _safe_json(response)
                 error_obj = raw.get("error") if raw else None
@@ -528,7 +532,7 @@ async def call_gemini_json(prompt: str, *, max_output_tokens: int | None = None)
                 if response.status_code not in retryable_statuses:
                     break
 
-                if response.status_code == 429 and error_message and "limit: 0" in error_message:
+                if response.status_code == 429 and _should_fast_fail_gemini_429(error_message):
                     break
 
                 if attempt < max_attempts:
@@ -709,6 +713,35 @@ def _build_gemini_error_message(
     return f"Gemini API xatolik ({status_code}).{retry_hint}"
 
 
+def _should_fast_fail_gemini_429(error_message: str | None) -> bool:
+    text = (error_message or "").lower()
+    if not text:
+        return True
+
+    markers = [
+        "limit: 0",
+        "quota",
+        "billing",
+        "resource_exhausted",
+        "exceeded your current quota",
+        "quota exceeded",
+        "rate-limit",
+        "rate limit",
+        "please retry in",
+    ]
+    return any(marker in text for marker in markers)
+
+
+def _has_meaningful_internet_result(result: dict[str, Any] | None) -> bool:
+    if not isinstance(result, dict):
+        return False
+    answer_text = result.get("answer_text")
+    if isinstance(answer_text, str) and answer_text.strip():
+        return True
+    sources = result.get("sources")
+    return isinstance(sources, list) and len(sources) > 0
+
+
 def _extract_gemini_sources(response_json: dict[str, Any]) -> list[dict[str, str]]:
     candidates = response_json.get("candidates") or []
     if not candidates:
@@ -802,8 +835,11 @@ async def call_gemini_grounded_answer(user_query: str) -> dict[str, Any]:
         for attempt in range(1, max_attempts + 1):
             response = await client.post(url, headers=headers, json=payload)
             if response.status_code == 200:
-                data = response.json()
-                break
+                data = _safe_json(response)
+                if data is not None:
+                    break
+                last_error = GeminiAPIError(502, "Gemini bo‘sh yoki noto‘g‘ri JSON qaytardi.")
+                continue
 
             raw = _safe_json(response)
             error_obj = raw.get("error") if raw else None
@@ -841,7 +877,7 @@ async def call_gemini_grounded_answer(user_query: str) -> dict[str, Any]:
                 break
 
             # Not retrying on "limit: 0" because it's almost always a quota/config issue.
-            if response.status_code == 429 and error_message and "limit: 0" in error_message:
+            if response.status_code == 429 and _should_fast_fail_gemini_429(error_message):
                 break
 
             if attempt < max_attempts:
@@ -952,8 +988,11 @@ SOURCES:
         for attempt in range(1, max_attempts + 1):
             response = await client.post(url, headers=headers, json=payload)
             if response.status_code == 200:
-                data = response.json()
-                break
+                data = _safe_json(response)
+                if data is not None:
+                    break
+                last_error = GeminiAPIError(502, "Gemini bo‘sh yoki noto‘g‘ri JSON qaytardi.")
+                continue
 
             raw = _safe_json(response)
             error_obj = raw.get("error") if raw else None
@@ -990,7 +1029,7 @@ SOURCES:
             if response.status_code not in retryable_statuses:
                 break
 
-            if response.status_code == 429 and error_message and "limit: 0" in error_message:
+            if response.status_code == 429 and _should_fast_fail_gemini_429(error_message):
                 break
 
             if attempt < max_attempts:
@@ -1062,8 +1101,6 @@ def _extract_openrouter_sources(data: dict[str, Any]) -> list[dict[str, str]]:
 async def call_openrouter_grounded_answer(user_query: str) -> dict[str, Any]:
     """
     Uses OpenRouter + web search grounding to generate a short product/service overview.
-
-    This is a fallback for cases when Gemini API quota is unavailable.
     """
     api_key = get_openrouter_api_key()
     base_url = get_openrouter_base_url()
@@ -1206,7 +1243,9 @@ Talablar:
             f"OpenRouter xatolik ({response.status_code}). {response.text[:800]}",
         )
 
-    data = response.json()
+    data = _safe_json(response)
+    if not data:
+        raise OpenRouterAPIError(502, "OpenRouter bo‘sh yoki noto‘g‘ri JSON qaytardi.")
     return {
         "query": user_query,
         "answer_text": _extract_openrouter_text(data),
@@ -1568,6 +1607,7 @@ async def health():
     gemini_key = get_gemini_api_key()
     return {
         "status": "ok",
+        "runtime_provider": "openrouter_only",
         "openrouter": {
             "api_key_present": bool(api_key),
             "api_key_length": len(api_key or ""),
@@ -1714,94 +1754,47 @@ async def internet_answer(request: InternetRequest):
 
     free_result: dict[str, Any] | None = None
     try:
-        free_result = await call_free_search_grounded_answer(query)
-    except Exception as exc:
-        logger.info("Free search failed for /api/internet: %s", str(exc)[:300])
-
-    free_sources: list[dict[str, str]] = []
-    if free_result:
-        raw_sources = free_result.get("sources")
-        if isinstance(raw_sources, list):
-            for item in raw_sources:
-                if not isinstance(item, dict):
-                    continue
-                title = item.get("title")
-                uri = item.get("uri")
-                if not isinstance(uri, str) or not uri.strip():
-                    continue
-                title = title.strip() if isinstance(title, str) else ""
-                free_sources.append({"title": title or uri.strip(), "uri": uri.strip()})
-                if len(free_sources) >= 12:
-                    break
-
-    if free_result and free_sources:
-        if get_gemini_api_key():
-            try:
-                return await call_gemini_from_internet_context(
-                    query,
-                    internet_context=str(free_result.get("answer_text") or ""),
-                    sources=free_sources,
-                )
-            except GeminiAPIError as exc:
-                logger.info(
-                    "Gemini rewrite failed for /api/internet, returning free search result: %s",
-                    exc.message,
-                )
-        return free_result
-
-    if get_gemini_api_key():
-        try:
-            return await call_gemini_grounded_answer(query)
-        except GeminiAPIError as exc:
-            logger.info(
-                "Gemini failed for /api/internet, trying OpenRouter fallback: %s",
-                exc.message,
-            )
-            try:
-                return await call_openrouter_grounded_answer(query)
-            except Exception:
-                if free_result is not None:
-                    return free_result
-                logger.info("OpenRouter fallback failed for /api/internet, trying free search fallback.")
-                try:
-                    return await call_free_search_grounded_answer(query)
-                except Exception:
-                    headers: dict[str, str] = {}
-                    if exc.status_code == 429 and exc.retry_after_seconds:
-                        headers["Retry-After"] = str(int(exc.retry_after_seconds + 0.999))
-                    raise HTTPException(
-                        status_code=exc.status_code,
-                        detail={
-                            "message": exc.message,
-                            "retry_after_seconds": exc.retry_after_seconds,
-                            "provider": "gemini",
-                        },
-                        headers=headers or None,
-                    )
-
-    try:
-        return await call_openrouter_grounded_answer(query)
+        openrouter_result = await call_openrouter_grounded_answer(query)
+        if _has_meaningful_internet_result(openrouter_result):
+            return openrouter_result
     except OpenRouterAPIError as exc:
         logger.info("OpenRouter failed for /api/internet, trying free search fallback: %s", exc.message)
-        if free_result is not None:
-            return free_result
-        try:
-            return await call_free_search_grounded_answer(query)
-        except Exception:
-            raise HTTPException(
-                status_code=exc.status_code,
-                detail={"message": exc.message, "provider": "openrouter"},
-            )
+        openrouter_error: Exception | None = exc
     except HTTPException:
         raise
     except Exception as exc:
         logger.info("OpenRouter not available for /api/internet, trying free search fallback: %s", str(exc)[:300])
-        if free_result is not None:
+        openrouter_error = exc
+    else:
+        openrouter_error = None
+
+    try:
+        free_result = await call_free_search_grounded_answer(query)
+        if _has_meaningful_internet_result(free_result):
             return free_result
-        try:
-            return await call_free_search_grounded_answer(query)
-        except Exception as free_exc:
-            raise HTTPException(status_code=500, detail=str(free_exc))
+    except Exception as free_exc:
+        logger.info("Free search failed for /api/internet: %s", str(free_exc)[:300])
+        if isinstance(openrouter_error, OpenRouterAPIError):
+            raise HTTPException(
+                status_code=openrouter_error.status_code,
+                detail={"message": openrouter_error.message, "provider": "openrouter"},
+            )
+        if openrouter_error is not None:
+            raise HTTPException(status_code=500, detail=str(openrouter_error))
+        raise HTTPException(status_code=500, detail=str(free_exc))
+
+    if free_result is not None:
+        return free_result
+
+    if isinstance(openrouter_error, OpenRouterAPIError):
+        raise HTTPException(
+            status_code=openrouter_error.status_code,
+            detail={"message": openrouter_error.message, "provider": "openrouter"},
+        )
+    if openrouter_error is not None:
+        raise HTTPException(status_code=500, detail=str(openrouter_error))
+
+    raise HTTPException(status_code=500, detail="Internet qidiruvi natija qaytarmadi.")
 
 
 @app.get("/{full_path:path}")
@@ -1832,7 +1825,6 @@ async def spa_fallback(full_path: str):
 async def generate_technical_task(request: GenerateRequest):
     try:
         query_service = QueryUnderstandingService()
-        candidate_selector = CandidateSelectorService()
         connector = XaridUzexConnector()
         price_service = PriceAnalysisService()
         prompt_builder = LLMPromptBuilder()
@@ -1898,16 +1890,13 @@ async def generate_technical_task(request: GenerateRequest):
                     resolved.selection_reason = "user_selected"
                     selected_products = [resolved]
 
+        if not selected_products and candidates:
+            for candidate in candidates[:20]:
+                candidate.selection_reason = "auto_selected_all"
+            selected_products = list(candidates[:20])
+
         if selected_products:
             selected = selected_products[0]
-        elif candidates:
-            selected = await candidate_selector.select_best_candidate(
-                user_query=request.query,
-                search_plan=search_plan,
-                candidates=candidates,
-            )
-            if selected is not None:
-                selected_products = [selected]
 
          
         orchestrator = SearchOrchestrator()
@@ -2076,51 +2065,13 @@ async def generate_technical_task(request: GenerateRequest):
             raw_llm = await call_openrouter(prompt)
             llm_result = extract_json(raw_llm)
         except Exception as exc:
-            # Free-tier OpenRouter models can be rate-limited and may also produce invalid JSON.
-            # If Gemini is configured, fall back to Gemini JSON mode for reliability.
-            if get_gemini_api_key():
-                logger.info(
-                    "OpenRouter failed for /api/generate, falling back to Gemini: %s",
-                    str(exc)[:300],
-                )
-                try:
-                    # Technical-task JSON can be large; ensure we allow enough output tokens.
-                    max_tokens = max(get_gemini_max_output_tokens(), 4096)
-                    llm_result = await call_gemini_json(prompt, max_output_tokens=max_tokens)
-                except GeminiAPIError as gem_exc:
-                    if gem_exc.status_code in {500, 502, 503, 504} and get_openrouter_api_key():
-                        logger.info(
-                            "Gemini failed for /api/generate, retrying OpenRouter fallback: %s",
-                            gem_exc.message,
-                        )
-                        try:
-                            raw_llm_retry = await call_openrouter(prompt)
-                            llm_result = extract_json(raw_llm_retry)
-                        except Exception as openrouter_retry_exc:
-                            logger.info(
-                                "OpenRouter retry after Gemini failure also failed: %s",
-                                str(openrouter_retry_exc)[:300],
-                            )
-                        else:
-                            gem_exc = None
-
-                    if llm_result is not None:
-                        pass
-                    else:
-                        headers: dict[str, str] = {}
-                        if gem_exc.status_code == 429 and gem_exc.retry_after_seconds:
-                            headers["Retry-After"] = str(int(gem_exc.retry_after_seconds + 0.999))
-                        raise HTTPException(
-                            status_code=gem_exc.status_code,
-                            detail={
-                                "message": gem_exc.message,
-                                "retry_after_seconds": gem_exc.retry_after_seconds,
-                                "provider": "gemini",
-                            },
-                            headers=headers or None,
-                        )
-            else:
-                raise
+            raise HTTPException(
+                status_code=502,
+                detail={
+                    "message": str(exc)[:500] or "OpenRouter xatoligi",
+                    "provider": "openrouter",
+                },
+            )
 
         if not isinstance(llm_result, dict):
             raise HTTPException(status_code=500, detail="LLM natijasi JSON object bo‘lishi kerak.")
