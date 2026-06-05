@@ -1,0 +1,22 @@
+{
+  "name": "tenderai-frontend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 5173",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "6.0.1",
+    "vite": "8.0.12",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "lucide-react": "1.14.0"
+  },
+  "devDependencies": {}
+}
