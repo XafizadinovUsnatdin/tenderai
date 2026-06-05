@@ -1,0 +1,87 @@
+[
+  {
+    "url": "https://code.jivosite.com/widget.js",
+    "status": 200,
+    "content_type": "application/javascript"
+  },
+  {
+    "url": "https://code.jivosite.com/script/widget/config/S4kF7dCcRe",
+    "status": 200,
+    "content_type": "application/x-javascript"
+  },
+  {
+    "url": "https://node-ya-5.jivosite.com/widget/status/561952/S4kF7dCcRe?rnd=0.5705642802313169",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8"
+  },
+  {
+    "url": "https://mc.yandex.ru/watch/96874542/1?wmode=7&page-url=https%3A%2F%2Fxarid.uzex.uz%2F&charset=utf-8&uah=chu%0A%22Chromium%22%3Bv%3D%22147%22%2C%22Not.A%2FBrand%22%3Bv%3D%228%22%0Acha%0Ax86%0Achb%0A64%0Achf%0A147.0.7727.15%0Achl%0A%22Chromium%22%3Bv%3D%22147.0.7727.15%22%2C%22Not.A%2FBrand%22%3Bv%3D%228.0.0.0%22%0Achm%0A%3F0%0Achp%0AWindows%0Achv%0A10.0&browser-info=pv%3A1%3Avf%3Apudvqnsfv6ib5kxc1gvz1plajlgbj%3Afu%3A0%3Aen%3Autf-8%3Ala%3Aru-RU%3Av%3A2500%3Acn%3A1%3Adp%3A0%3Als%3A1664060528392%3Ahid%3A660195308%3Az%3A300%3Ai%3A20260513235643%3Aet%3A1778698604%3Ac%3A1%3Arn%3A77332467%3Arqn%3A1%3Au%3A1778698604806565051%3Aw%3A1280x720%3As%3A1280x720x32%3Ask%3A1.0000000149011612%3Awv%3A2%3Ads%3A28%2C62%2C70%2C1%2C1%2C0%2C%2C761%2C%2C%2C%2C%2C%3Aco%3A0%3Ahdl%3A1%3Acpf%3A1%3Ans%3A1778698601677%3Arqnl%3A1%3Ast%3A1778698604%3At%3ADAVLAT%20XARIDLARI%20MAXSUS%20AXBOROT%20PORTALI&t=clt%281013%29gdpr%2814%29clc%280-0-0%29rqnt%281%29aw%281%29rcm%281%29cdl%28na%29eco%2842009088%29ti%281%29&redirnss=1",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8"
+  },
+  {
+    "url": "https://ads.uzex.uz/Widget?system=xarid&zone=xarid_top",
+    "status": 200,
+    "content_type": "text/html; charset=utf-8"
+  },
+  {
+    "url": "https://xarid-api-trade.uzex.uz/Info/GetCurrentIp",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8"
+  },
+  {
+    "url": "https://xarid-api-trade.uzex.uz/Lib/GetRegions",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8"
+  },
+  {
+    "url": "https://xarid-api-trade.uzex.uz/Lib/GetPlangraphMonths",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8"
+  },
+  {
+    "url": "https://xarid-api-trade.uzex.uz/Info/GetPopup",
+    "status": 204,
+    "content_type": ""
+  },
+  {
+    "url": "https://xarid-api-trade.uzex.uz/Common/GetNews",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8"
+  },
+  {
+    "url": "https://xarid-api-trade.uzex.uz/Info/GetCurrentIp",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8"
+  },
+  {
+    "url": "https://ads.uzex.uz/Widget?system=xarid&zone=xarid_top",
+    "status": 200,
+    "content_type": "text/html; charset=utf-8"
+  },
+  {
+    "url": "https://xarid-api-trade.uzex.uz/Common/GetDashboardSumCosts",
+    "status": 200,
+    "content_type": "application/json; charset=utf-8"
+  },
+  {
+    "url": "https://ads.uzex.uz/Widget?system=xarid&zone=xarid_top",
+    "status": 200,
+    "content_type": "text/html; charset=utf-8"
+  },
+  {
+    "url": "https://ads.uzex.uz/Widget?system=xarid&zone=xarid_top",
+    "status": 200,
+    "content_type": "text/html; charset=utf-8"
+  },
+  {
+    "url": "https://ads.uzex.uz/Widget?system=xarid&zone=xarid_top",
+    "status": 200,
+    "content_type": "text/html; charset=utf-8"
+  },
+  {
+    "url": "https://code.jivosite.com/css/cdddffe/widget.css",
+    "status": 200,
+    "content_type": "text/css"
+  }
+]

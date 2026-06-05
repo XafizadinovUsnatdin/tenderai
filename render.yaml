@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: tenderai
+    env: docker
+    dockerfilePath: ./Dockerfile
+    autoDeploy: true
+    envVars:
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_MODEL
+        value: openai/gpt-4o-mini
+      - key: OPENROUTER_BASE_URL
+        value: https://openrouter.ai/api/v1
+      # Agar frontend alohida domen bo‘lsa, shuni o‘sha URL(lar) ga sozlang (vergul bilan):
+      # - key: CORS_ORIGINS
+      #   value: https://your-frontend-domain.vercel.app
+
