@@ -1,0 +1,37 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: tenderai-collector-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-tenderai}
+      POSTGRES_USER: ${POSTGRES_USER:-tenderai}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tenderai}
+    ports:
+      - "${POSTGRES_PORT:-55432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-tenderai} -d ${POSTGRES_DB:-tenderai}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  collector:
+    container_name: tenderai-collector-only
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      TENDER_ARCHIVE_DATABASE_URL: postgresql://${POSTGRES_USER:-tenderai}:${POSTGRES_PASSWORD:-tenderai}@postgres:5432/${POSTGRES_DB:-tenderai}
+    command: ["python", "-m", "app.collector"]
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
